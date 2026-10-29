@@ -1401,3 +1401,409 @@ textarea.form-input {
 .form-actions-bottom { position: static; background: none; padding-top: 0; margin-top: 16px; }
 .floating-bot-btn { opacity: 0; pointer-events: none; transform: scale(.8); transition: opacity .2s, transform .2s; width: 40px; height: 40px; bottom: 78px; right: 14px; }
 .floating-bot-btn.show { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+/* ================= 16. GOOGLE AUTH & ROLE PERMISSIONS ================= */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.login-overlay[hidden] {
+  display: none;
+}
+
+.login-card {
+  max-width: 380px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 26px;
+  padding: 30px 24px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid #fef3c7;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #d97706, #0e4e46, #0284c7);
+}
+
+.login-logo {
+  height: 48px;
+  max-width: 180px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+
+.login-brand h2 {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.login-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: #fef3c7;
+  color: #b45309;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.login-desc p {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 22px;
+}
+
+.btn-google-login {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-google-login:active {
+  background: #f8fafc;
+  transform: scale(0.98);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.btn-google-login .google-icon {
+  flex-shrink: 0;
+}
+
+.login-note {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.btn-guest-mode {
+  background: none;
+  border: none;
+  color: #0284c7;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 14px;
+  padding: 4px;
+}
+
+/* User avatar in header */
+.user-avatar {
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.user-avatar:active {
+  transform: scale(0.92);
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Role Visibility Controls */
+body.role-staff .tab-admin-only {
+  display: none !important;
+}
+
+body.role-staff .admin-only-feature {
+  display: none !important;
+}
+
+/* User Profile Modal */
+.profile-card-modal {
+  text-align: center;
+  padding: 10px 4px;
+}
+
+.profile-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0e4e46, #0284c7);
+  color: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgba(14, 78, 70, 0.25);
+  border: 3px solid #fef3c7;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.profile-email {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0 0 14px;
+  word-break: break-all;
+}
+
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.role-pill.admin {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.role-pill.staff {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.profile-scope-box {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #334155;
+  text-align: left;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-toggle-admin {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-logout {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 11px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ================= 17. CONFIRMATION MODAL ================= */
+.confirm-box {
+  max-width: 420px;
+  width: 92%;
+  padding: 0 !important;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.confirm-header {
+  background: linear-gradient(135deg, #0e4e46, #1e3a5f);
+  color: #ffffff;
+  padding: 18px 20px;
+  text-align: center;
+  position: relative;
+}
+
+.confirm-icon {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.confirm-title {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.confirm-body {
+  padding: 18px 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.confirm-table {
+  width: 100%;
+  font-size: 13px;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.confirm-label {
+  color: #64748b;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.confirm-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.confirm-val.highlight {
+  color: #0284c7;
+}
+
+.confirm-cl-breakdown {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.confirm-cl-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.confirm-cl-item:not(:last-child) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.badge-pass {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.badge-fail {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.confirm-actions .btn-cancel {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+}
+
+.confirm-actions .btn-ok {
+  flex: 1.6;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0e4e46, #0284c7);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(14, 78, 70, 0.35);
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.confirm-actions .btn-ok:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}

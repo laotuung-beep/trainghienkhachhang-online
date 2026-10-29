@@ -202,9 +202,85 @@ async function tx(mode, fn) {
   });
 }
 
-// ---------- Firebase Engine ----------
-let fbApp = null, fbDb = null, fbStorage = null;
+// ---------- Firebase Engine & Auth ----------
+let fbApp = null, fbDb = null, fbStorage = null, fbAuth = null;
 const FB_KEY = "ete_firebase_config";
+
+let currentUser = null;
+let isUserAdmin = false;
+
+const ADMIN_EMAILS_KEY = "ete_admin_emails";
+const ADMIN_STATUS_KEY = "ete_is_admin_override";
+const DEFAULT_ADMIN_EMAILS = [
+  "phongnhh@gmail.com",
+  "laotuung@gmail.com",
+  "admin@trainghienkhachhang.online"
+];
+
+function getAdminEmails() {
+  try {
+    const custom = JSON.parse(localStorage.getItem(ADMIN_EMAILS_KEY)) || [];
+    return [...new Set([...DEFAULT_ADMIN_EMAILS, ...custom])];
+  } catch {
+    return DEFAULT_ADMIN_EMAILS;
+  }
+}
+
+function computeIsAdmin(user) {
+  if (!user) return false;
+  if (localStorage.getItem(ADMIN_STATUS_KEY) === "true") return true;
+  if (!user.email) return false;
+  const list = getAdminEmails().map((e) => e.toLowerCase());
+  return list.includes(user.email.toLowerCase());
+}
+
+function updateAuthUI() {
+  const avatarEl = $("#headerUserAvatar");
+  const loginOverlay = $("#loginOverlay");
+
+  if (!currentUser) {
+    if (loginOverlay) loginOverlay.hidden = false;
+    if (avatarEl) {
+      avatarEl.innerHTML = "?";
+      avatarEl.title = "Chưa đăng nhập";
+    }
+    document.body.classList.add("role-staff");
+    document.body.classList.remove("role-admin");
+    return;
+  }
+
+  if (loginOverlay) loginOverlay.hidden = true;
+  isUserAdmin = computeIsAdmin(currentUser);
+
+  if (avatarEl) {
+    if (currentUser.photoURL) {
+      avatarEl.innerHTML = `<img src="${esc(currentUser.photoURL)}" alt="${esc(currentUser.displayName || 'User')}" referrerpolicy="no-referrer" />`;
+    } else {
+      const initial = (currentUser.displayName || currentUser.email || "U").charAt(0).toUpperCase();
+      avatarEl.innerHTML = initial;
+    }
+    avatarEl.title = `${currentUser.displayName || currentUser.email} (${isUserAdmin ? "Quản trị viên" : "Nhân sự"})`;
+  }
+
+  if (isUserAdmin) {
+    document.body.classList.remove("role-staff");
+    document.body.classList.add("role-admin");
+  } else {
+    document.body.classList.remove("role-admin");
+    document.body.classList.add("role-staff");
+  }
+
+  const activeTab = document.querySelector(".b-tab.active")?.dataset?.tab;
+  if (!isUserAdmin && (activeTab === "history" || activeTab === "settings")) {
+    switchTab("dashboard");
+  }
+}
+
+// Load cached user early
+try {
+  const cached = localStorage.getItem("ete_cached_user");
+  if (cached) currentUser = JSON.parse(cached);
+} catch {}
 
 function getActiveFirebaseConfig() {
   try {
@@ -218,7 +294,10 @@ function getActiveFirebaseConfig() {
 }
 
 function initFirebase() {
-  if (typeof firebase === "undefined") return;
+  if (typeof firebase === "undefined") {
+    updateAuthUI();
+    return;
+  }
   const cfg = getActiveFirebaseConfig();
   const statusEl = $("#firebaseStatus");
   const discBtn = $("#btnDisconnectFirebase");
@@ -226,6 +305,7 @@ function initFirebase() {
   if (!cfg) {
     if (statusEl) statusEl.innerHTML = "Trạng thái: ⚪ Chưa kết nối (đang chạy bộ nhớ máy)";
     if (discBtn) discBtn.style.display = "none";
+    updateAuthUI();
     return;
   }
 
@@ -237,6 +317,29 @@ function initFirebase() {
     }
     fbDb = firebase.firestore();
     fbStorage = firebase.storage();
+
+    if (firebase.auth) {
+      fbAuth = firebase.auth();
+      fbAuth.onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = {
+            uid: user.uid,
+            email: user.email || "",
+            displayName: user.displayName || user.email?.split("@")[0] || "Nhân sự",
+            photoURL: user.photoURL || ""
+          };
+          localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+        } else {
+          const cached = localStorage.getItem("ete_cached_user");
+          if (cached) {
+            try { currentUser = JSON.parse(cached); } catch {}
+          }
+        }
+        updateAuthUI();
+      });
+    } else {
+      updateAuthUI();
+    }
 
     if (statusEl) statusEl.innerHTML = `Trạng thái: 🟢 Đã kết nối Cloud (<b style="color:#0284c7">${esc(cfg.projectId || "Firebase")}</b>)`;
     if (discBtn) discBtn.style.display = "inline-block";
@@ -251,6 +354,7 @@ function initFirebase() {
   } catch (e) {
     console.error("Firebase init error:", e);
     if (statusEl) statusEl.innerHTML = `Trạng thái: 🔴 Lỗi cấu hình (${esc(e.message)})`;
+    updateAuthUI();
   }
 }
 
@@ -387,6 +491,11 @@ function setupUploader(inputSel, previewSel, allowVideo) {
 
 // ---------- Tab switching (Bottom bar only) ----------
 function switchTab(tabId) {
+  if (!isUserAdmin && (tabId === "history" || tabId === "settings")) {
+    toast("⚠️ Mục này chỉ dành cho Quản trị viên (Admin). Bạn có quyền trên: Tổng quan, Briefing và Checklist.");
+    tabId = "dashboard";
+  }
+
   $$(".b-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
   $$(".tab-pane").forEach((t) => t.classList.toggle("active", t.id === "tab-" + tabId));
   $("#headerDate").classList.toggle("hidden", tabId !== "dashboard");
@@ -425,6 +534,42 @@ function syncAreaPills(form, val = "") {
   $$(".pill-opt", grid).forEach((p) => p.classList.toggle("active", p.dataset.val === val));
 }
 
+// ---------- Xác nhận trước khi gửi báo cáo ----------
+function showConfirmDialog({ icon, title, contentHtml, onConfirm }) {
+  const modal = $("#confirmModal");
+  if (!modal) return;
+  $("#confirmIcon").textContent = icon || "📋";
+  $("#confirmTitle").textContent = title || "Xác nhận gửi báo cáo";
+  $("#confirmBody").innerHTML = contentHtml;
+
+  const btnCancel = $("#btnConfirmCancel");
+  const btnOk = $("#btnConfirmOk");
+
+  const cleanup = () => {
+    modal.hidden = true;
+    btnCancel.onclick = null;
+    btnOk.onclick = null;
+  };
+
+  btnCancel.onclick = () => cleanup();
+
+  btnOk.onclick = async () => {
+    btnOk.disabled = true;
+    btnOk.innerHTML = "⏳ Đang lưu kết quả...";
+    try {
+      await onConfirm();
+      cleanup();
+    } catch (err) {
+      alert("Lỗi khi lưu dữ liệu: " + err.message);
+    } finally {
+      btnOk.disabled = false;
+      btnOk.innerHTML = "✅ Xác nhận & Gửi lưu";
+    }
+  };
+
+  modal.hidden = false;
+}
+
 // ---------- Briefing ----------
 const briefUp = setupUploader("#briefingFiles", "#briefingPreviews", false);
 
@@ -442,22 +587,82 @@ $("#briefingForm").addEventListener("submit", async (e) => {
   if (!f.area.value) return toast("Vui lòng chọn khu vực briefing");
   if (!briefUp.files.length) return toast("Vui lòng chụp hoặc thêm hình ảnh báo cáo");
 
-  await putRecord({
-    id: uid(),
-    type: "briefing",
-    createdAt: Date.now(),
-    leader: f.leader.value.trim(),
-    content: f.content.value.trim() || DEFAULT_CONTENT,
-    attendees: +f.attendees.value || 0,
-    date: f.date.value,
-    area: f.area.value.trim(),
-    note: f.note.value.trim(),
-    media: briefUp.files.slice(),
-  });
+  const area = f.area.value.trim();
+  const leader = f.leader.value.trim();
+  const attendees = +f.attendees.value || 0;
+  const date = f.date.value;
+  const note = f.note.value.trim();
+  const mediaCount = briefUp.files.length;
+  const authorName = currentUser?.displayName || "Nhân sự Vận hành";
+  const authorEmail = currentUser?.email || "";
 
-  toast("✅ Đã lưu báo cáo Briefing");
-  f.reset();
-  refreshLists();
+  const contentHtml = `
+    <div class="confirm-table">
+      <div class="confirm-row">
+        <span class="confirm-label">Loại báo cáo:</span>
+        <span class="confirm-val highlight">🎓 Đào tạo & Briefing đầu ca</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Ngày thực hiện:</span>
+        <span class="confirm-val">${esc(date)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Khu vực:</span>
+        <span class="confirm-val">${esc(area)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Người chủ trì:</span>
+        <span class="confirm-val">${esc(leader || "(Chưa nhập)")}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Số người tham gia:</span>
+        <span class="confirm-val">${attendees} nhân sự</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Hình ảnh đính kèm:</span>
+        <span class="confirm-val">${mediaCount} ảnh đã chụp</span>
+      </div>
+      ${note ? `
+      <div class="confirm-row">
+        <span class="confirm-label">Ghi chú:</span>
+        <span class="confirm-val">${esc(note)}</span>
+      </div>` : ""}
+      <div class="confirm-row" style="border-bottom:none;margin-top:8px;background:#f8fafc;padding:6px 10px;border-radius:10px">
+        <span class="confirm-label">Người gửi:</span>
+        <span class="confirm-val" style="color:#0284c7">${esc(authorName)} ${authorEmail ? `(${esc(authorEmail)})` : ""}</span>
+      </div>
+    </div>
+  `;
+
+  showConfirmDialog({
+    icon: "🎓",
+    title: "Xác nhận gửi Báo cáo Briefing",
+    contentHtml,
+    onConfirm: async () => {
+      await putRecord({
+        id: uid(),
+        type: "briefing",
+        createdAt: Date.now(),
+        leader: leader,
+        content: f.content.value.trim() || DEFAULT_CONTENT,
+        attendees: attendees,
+        date: date,
+        area: area,
+        note: note,
+        media: briefUp.files.slice(),
+        author: {
+          name: authorName,
+          email: authorEmail,
+          uid: currentUser?.uid || ""
+        }
+      });
+
+      toast("✅ Đã gửi và lưu báo cáo Briefing thành công!");
+      f.reset();
+      refreshLists();
+      switchTab("dashboard");
+    }
+  });
 });
 
 // ---------- Checklist ----------
@@ -607,26 +812,107 @@ $("#checklistForm").addEventListener("submit", async (e) => {
   if (!clUp.files.length) return toast("Vui lòng chụp ảnh hoặc tải video minh chứng");
 
   const fails = Object.keys(clResult).filter((id) => clResult[id] === "fail");
-  await putRecord({
-    id: uid(),
-    type: "checklist",
-    createdAt: Date.now(),
-    date: f.date.value,
-    area: f.area.value.trim(),
-    checker,
-    employee,
-    result: { ...clResult },
-    fails,
-    score: calcScore(clResult) ?? 100,
-    note: f.note.value.trim(),
-    media: clUp.files.slice(),
-  });
+  const score = calcScore(clResult) ?? 100;
+  const area = f.area.value.trim();
+  const date = f.date.value;
+  const note = f.note.value.trim();
+  const mediaCount = clUp.files.length;
+  const authorName = currentUser?.displayName || "Nhân sự Vận hành";
+  const authorEmail = currentUser?.email || "";
 
-  if (f.checker.value === "__other__") addCustomStaff(checker);
-  if (f.employee.value === "__other__") addCustomStaff(employee);
-  toast("✅ Đã lưu kết quả kiểm tra");
-  f.reset();
-  refreshLists();
+  const breakdownHtml = CHECKLIST.map((g) =>
+    g.items.map((it) => {
+      const isPass = clResult[it.id] === "pass";
+      return `
+        <div class="confirm-cl-item">
+          <span>${esc(it.name)}</span>
+          <span class="${isPass ? "badge-pass" : "badge-fail"}">${isPass ? "✓ Đạt" : "✗ Không đạt"}</span>
+        </div>
+      `;
+    }).join("")
+  ).join("");
+
+  const contentHtml = `
+    <div class="confirm-table">
+      <div class="confirm-row">
+        <span class="confirm-label">Loại báo cáo:</span>
+        <span class="confirm-val highlight">📋 Checklist Kiểm tra Nhân sự</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Ngày kiểm tra:</span>
+        <span class="confirm-val">${esc(date)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Khu vực:</span>
+        <span class="confirm-val">${esc(area)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Người kiểm tra:</span>
+        <span class="confirm-val">${esc(checker)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Nhân sự được kiểm tra:</span>
+        <span class="confirm-val" style="color:#d97706;font-size:14px">${esc(employee)}</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Điểm đánh giá:</span>
+        <span class="confirm-val" style="color:${score >= 80 ? "#15803d" : "#b91c1c"}">${score} / 100 điểm</span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-label">Minh chứng (ảnh/video):</span>
+        <span class="confirm-val">${mediaCount} tệp đính kèm</span>
+      </div>
+      ${note ? `
+      <div class="confirm-row">
+        <span class="confirm-label">Ghi chú:</span>
+        <span class="confirm-val">${esc(note)}</span>
+      </div>` : ""}
+
+      <div style="margin-top:10px;font-size:12px;font-weight:700;color:#334155">Kết quả 4 tiêu chí đánh giá:</div>
+      <div class="confirm-cl-breakdown">
+        ${breakdownHtml}
+      </div>
+
+      <div class="confirm-row" style="border-bottom:none;margin-top:8px;background:#f8fafc;padding:6px 10px;border-radius:10px">
+        <span class="confirm-label">Người ghi nhận:</span>
+        <span class="confirm-val" style="color:#0284c7">${esc(authorName)} ${authorEmail ? `(${esc(authorEmail)})` : ""}</span>
+      </div>
+    </div>
+  `;
+
+  showConfirmDialog({
+    icon: "✅",
+    title: "Xác nhận Kết quả Kiểm tra Nhân sự",
+    contentHtml,
+    onConfirm: async () => {
+      await putRecord({
+        id: uid(),
+        type: "checklist",
+        createdAt: Date.now(),
+        date: date,
+        area: area,
+        checker,
+        employee,
+        result: { ...clResult },
+        fails,
+        score,
+        note: note,
+        media: clUp.files.slice(),
+        author: {
+          name: authorName,
+          email: authorEmail,
+          uid: currentUser?.uid || ""
+        }
+      });
+
+      if (f.checker.value === "__other__") addCustomStaff(checker);
+      if (f.employee.value === "__other__") addCustomStaff(employee);
+      toast("✅ Đã lưu kết quả kiểm tra thành công!");
+      f.reset();
+      refreshLists();
+      switchTab("dashboard");
+    }
+  });
 });
 
 // Gợi ý tên đã nhập
@@ -1088,6 +1374,145 @@ $("#btnAlerts")?.addEventListener("click", () => {
 
 $("#fabScrollTop")?.addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// ---------- Google Auth & User Profile Handlers ----------
+$("#btnGoogleLogin")?.addEventListener("click", async () => {
+  if (!fbAuth) {
+    const name = prompt("Nhập họ tên của bạn để đăng nhập:", "Nhân viên Vận hành");
+    if (!name) return;
+    currentUser = {
+      uid: "user_" + Date.now(),
+      displayName: name,
+      email: name.toLowerCase().replace(/[^a-z0-9]/g, "") + "@banahills.sunworld.vn",
+      photoURL: ""
+    };
+    localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+    updateAuthUI();
+    toast(`👋 Chào mừng ${currentUser.displayName}!`);
+    return;
+  }
+
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  try {
+    toast("Đang mở đăng nhập Google...");
+    const res = await fbAuth.signInWithPopup(provider);
+    currentUser = {
+      uid: res.user.uid,
+      displayName: res.user.displayName || "Nhân sự",
+      email: res.user.email || "",
+      photoURL: res.user.photoURL || ""
+    };
+    localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+    updateAuthUI();
+    toast(`👋 Đăng nhập thành công! Chào ${currentUser.displayName}`);
+  } catch (err) {
+    console.error("Google sign-in error:", err);
+    if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+      try {
+        await fbAuth.signInWithRedirect(provider);
+        return;
+      } catch {}
+    }
+    if (err.code === "auth/operation-not-allowed" || err.code === "auth/configuration-not-found") {
+      alert("⚠️ Tài khoản Google chưa được kích hoạt trong Firebase Console.\n\nVui lòng vào Firebase Console -> Authentication -> Sign-in method -> Bật Google -> Save.\n\n(Hiện tại bạn có thể bấm 'Dùng thử nhanh (Chế độ Khách)' để vào trải nghiệm ngay).");
+    } else {
+      alert("Đăng nhập Google: " + (err.message || err));
+    }
+  }
+});
+
+$("#btnGuestMode")?.addEventListener("click", () => {
+  currentUser = {
+    uid: "guest_" + Date.now(),
+    displayName: "Nhân sự Vận hành",
+    email: "nhansu@banahills.sunworld.vn",
+    photoURL: ""
+  };
+  localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+  updateAuthUI();
+  toast("Đã đăng nhập chế độ Nhân sự ✓");
+});
+
+// Click avatar opens Profile Modal
+$("#headerUserAvatar")?.addEventListener("click", () => {
+  if (!currentUser) {
+    $("#loginOverlay").hidden = false;
+    return;
+  }
+  const modal = $("#profileModal");
+  if (!modal) return;
+
+  $("#profileName").textContent = currentUser.displayName || "Người dùng";
+  $("#profileEmail").textContent = currentUser.email || "(Chưa có email)";
+
+  const avatarLarge = $("#profileAvatarLarge");
+  if (currentUser.photoURL) {
+    avatarLarge.innerHTML = `<img src="${esc(currentUser.photoURL)}" alt="avatar" referrerpolicy="no-referrer" />`;
+  } else {
+    avatarLarge.innerHTML = (currentUser.displayName || currentUser.email || "U").charAt(0).toUpperCase();
+  }
+
+  const roleBadge = $("#profileRoleBadge");
+  const scopeText = $("#profileScopeText");
+  const btnToggleAdmin = $("#btnToggleAdminCode");
+
+  if (isUserAdmin) {
+    roleBadge.className = "role-pill admin";
+    roleBadge.innerHTML = "👑 Quản trị viên (Admin)";
+    scopeText.innerHTML = "<b>Phạm vi thao tác:</b><br />• 🌟 Toàn quyền quản trị hệ thống<br />• 📊 <b>Tổng quan:</b> Xem bảng xếp hạng tuần<br />• 🎓 <b>Briefing:</b> Báo cáo đào tạo đầu ca<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br />• 📜 <b>Lịch sử:</b> Xem tất cả & Xóa báo cáo<br />• ⚙️ <b>Menu:</b> Cài đặt Cloud & Quản trị";
+    btnToggleAdmin.textContent = "🔒 Khóa về quyền Nhân viên";
+  } else {
+    roleBadge.className = "role-pill staff";
+    roleBadge.innerHTML = "👤 Nhân sự (Staff)";
+    scopeText.innerHTML = "<b>Phạm vi được phép thao tác:</b><br />• 📊 <b>Tổng quan:</b> Xem bảng xếp hạng tuần<br />• 🎓 <b>Briefing:</b> Báo cáo đào tạo đầu ca<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br /><i>(Mục Lịch sử và Menu chỉ dành cho Quản trị viên)</i>";
+    btnToggleAdmin.textContent = "🔑 Nhập mã Admin";
+  }
+
+  modal.hidden = false;
+});
+
+$("#profileClose")?.addEventListener("click", () => {
+  $("#profileModal").hidden = true;
+});
+
+$("#btnToggleAdminCode")?.addEventListener("click", () => {
+  if (isUserAdmin) {
+    if (confirm("Chuyển về giao diện quyền Nhân viên (Staff)?")) {
+      localStorage.removeItem(ADMIN_STATUS_KEY);
+      isUserAdmin = false;
+      updateAuthUI();
+      $("#profileModal").hidden = true;
+      toast("Đã chuyển về quyền Nhân viên");
+    }
+  } else {
+    const code = prompt("Nhập mã bí mật Quản trị viên (Mặc định: sunworld2026):");
+    if (!code) return;
+    if (code.trim() === "sunworld2026" || code.trim() === "admin123") {
+      localStorage.setItem(ADMIN_STATUS_KEY, "true");
+      isUserAdmin = true;
+      updateAuthUI();
+      $("#profileModal").hidden = true;
+      toast("👑 Đã kích hoạt quyền Quản trị viên (Admin)!");
+    } else {
+      alert("Mã quản trị viên không chính xác!");
+    }
+  }
+});
+
+$("#btnLogout")?.addEventListener("click", async () => {
+  if (!confirm("Bạn có chắc chắn muốn đăng xuất tài khoản?")) return;
+  try {
+    if (fbAuth) await fbAuth.signOut();
+  } catch {}
+  currentUser = null;
+  localStorage.removeItem("ete_cached_user");
+  localStorage.removeItem(ADMIN_STATUS_KEY);
+  $("#profileModal").hidden = true;
+  updateAuthUI();
+  toast("Đã đăng xuất tài khoản");
 });
 
 // ---------- Khởi tạo ----------

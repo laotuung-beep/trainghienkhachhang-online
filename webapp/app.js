@@ -70,58 +70,71 @@ const STAFF = [
   "Huỳnh Thị Như",
 ];
 
-// Tiêu chí đánh giá: Hình ảnh – Tác phong – Dịch vụ (Đón khách / Tiễn khách)
+// 8 Tiêu chí đánh giá dịch vụ khách hàng (Thang điểm 1 - 5)
 const CHECKLIST = [
   {
-    group: "Hình ảnh",
-    items: [
-      {
-        id: "hinhanh",
-        short: "Hình ảnh",
-        text: "Hình ảnh chỉn chu",
-        hint: "Trang phục đúng quy định, sạch sẽ, phẳng phiu; giày tất sạch; đầu tóc gọn gàng; khuôn mặt tươi tắn; móng tay ≤ 2mm; phụ kiện đơn giản, không lộ hình xăm.",
-      },
-    ],
+    stt: 1,
+    id: "thaidovuive",
+    name: "Thái độ vui vẻ",
+    desc: "Gương mặt tươi tắn, thái độ thân thiện, sẵn sàng chào đón khách.",
   },
   {
-    group: "Tác phong",
-    items: [
-      {
-        id: "tacphong",
-        short: "Tác phong",
-        text: "Tác phong chuẩn mực",
-        hint: "Đúng giờ, đúng vị trí; tư thế đi/đứng chuẩn; không tụ tập, làm việc riêng, ăn uống, dùng điện thoại; không hành vi thiếu lịch sự; giữ vệ sinh khu vực.",
-      },
-    ],
+    stt: 2,
+    id: "nucuoi",
+    name: "Nụ cười",
+    desc: "Chủ động mỉm cười khi giao tiếp, đón khách hoặc tiễn khách.",
   },
   {
-    group: "Dịch vụ",
-    items: [
-      {
-        id: "donkhach",
-        short: "Đón khách",
-        text: "Dịch vụ: Đón khách",
-        hint: "Mỉm cười, cúi chào: “Chào mừng Anh/Chị đã đến với… / Welcome to…”, “Cả nhà đã sẵn sàng chưa ạ?… Xin mời / Are you ready, guys? …Let’s go”.",
-      },
-      {
-        id: "tienkhach",
-        short: "Tiễn khách",
-        text: "Dịch vụ: Tiễn khách",
-        hint: "“Cả nhà tiếp tục hành trình vui vẻ nhá / Enjoy the rest of your day”, “Cảm ơn cả nhà, hẹn gặp lại nhé / Thanks, everyone! See you next time”.",
-      },
-    ],
+    stt: 3,
+    id: "cuchivaytay",
+    name: "Cử chỉ vẫy tay/chào",
+    desc: "Có cử chỉ chào khách phù hợp, tự nhiên và thân thiện.",
+  },
+  {
+    stt: 4,
+    id: "loichaodon",
+    name: "Lời chào khi đón khách",
+    desc: "Chủ động nói lời chào ngắn gọn, rõ ràng, đúng ngữ cảnh.",
+  },
+  {
+    stt: 5,
+    id: "loichaotien",
+    name: "Lời chào khi tiễn khách",
+    desc: "Chủ động cảm ơn, chúc khách vui vẻ hoặc hẹn gặp lại.",
+  },
+  {
+    stt: 6,
+    id: "giongnoi",
+    name: "Giọng nói",
+    desc: "Âm lượng vừa đủ nghe, phát âm rõ, giọng điệu vui vẻ; không hô máy móc.",
+  },
+  {
+    stt: 7,
+    id: "tinhchudong",
+    name: "Tính chủ động",
+    desc: "Chủ động thực hiện, không chờ khách chào trước hoặc giám sát nhắc nhở.",
+  },
+  {
+    stt: 8,
+    id: "duytriondinh",
+    name: "Duy trì ổn định",
+    desc: "Thực hiện tương đối đồng đều trong suốt thời gian được quan sát.",
   },
 ];
 
-const BRIEF = {
-  hinhanh: "Trang phục, đầu tóc, vệ sinh, phụ kiện",
-  tacphong: "Đúng giờ, đúng vị trí, tư thế, không làm việc riêng",
-  donkhach: "Mỉm cười, cúi chào, câu chào đón khách",
-  tienkhach: "Cảm ơn, chúc khách, câu tiễn khách",
-};
 const ITEM_MAP = {};
-CHECKLIST.forEach((g) => g.items.forEach((it) => (ITEM_MAP[it.id] = { ...it, group: g.group })));
-const itemLabel = (id) => (ITEM_MAP[id] ? (ITEM_MAP[id].group === "Dịch vụ" ? "Dịch vụ: " : "") + ITEM_MAP[id].short : `Tiêu chí cũ (${id})`);
+CHECKLIST.forEach((it) => (ITEM_MAP[it.id] = it));
+const itemLabel = (id) => (ITEM_MAP[id] ? ITEM_MAP[id].name : `Tiêu chí cũ (${id})`);
+
+function ratingBadgeLabel(val) {
+  val = Number(val) || 0;
+  if (val === 5) return '<span style="color:#b45309;font-weight:800">⭐ 5/5 Xuất sắc</span>';
+  if (val === 4) return '<span style="color:#10b981;font-weight:700">🟢 4/5 Tốt</span>';
+  if (val === 3) return '<span style="color:#eab308;font-weight:700">🟡 3/5 Đạt</span>';
+  if (val === 2) return '<span style="color:#f97316;font-weight:700">🟠 2/5 Yếu</span>';
+  if (val === 1) return '<span style="color:#ef4444;font-weight:700">🔴 1/5 Kém</span>';
+  return '<span style="color:#94a3b8">Chưa chấm</span>';
+}
 
 // ---------- Tiện ích ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -665,88 +678,133 @@ $("#briefingForm").addEventListener("submit", async (e) => {
   });
 });
 
-// ---------- Checklist ----------
+// ---------- Checklist (Thang điểm 1 - 5) ----------
 const clUp = setupUploader("#checklistFiles", "#checklistPreviews", true);
 let clResult = {};
 
 function renderChecklistItems() {
-  $("#checklistItems").innerHTML = CHECKLIST.map((g) => `
-    ${g.items.map((it) => `
-      <div class="cl-card ${clResult[it.id] === "fail" ? "fail" : ""}" data-id="${it.id}">
+  $("#checklistItems").innerHTML = CHECKLIST.map((it) => {
+    const curVal = Number(clResult[it.id]) || 0;
+    const isFail = curVal > 0 && curVal <= 2;
+    return `
+      <div class="cl-card ${isFail ? "fail" : curVal >= 3 ? "rated" : ""}" data-id="${it.id}">
         <div class="cl-head">
           <div class="cl-head-text">
-            <span class="cl-tag">${esc(g.group)}</span>
-            <div class="cl-title">${esc(it.text)}</div>
+            <span class="cl-stt-badge">Tiêu chí #${it.stt}</span>
+            <div class="cl-title">${it.stt}. ${esc(it.name)}</div>
           </div>
-          <button type="button" class="cl-more" aria-expanded="false">Chi tiết ▾</button>
+          <span class="cl-cur-badge">${ratingBadgeLabel(curVal)}</span>
         </div>
-        <div class="cl-brief">${esc(BRIEF[it.id] || "")}</div>
-        <div class="cl-hint" hidden>${esc(it.hint)}</div>
-        <div class="cl-action-btns">
-          <button type="button" class="cl-btn ${clResult[it.id] === "pass" ? "on" : ""}" data-v="pass">
-            <span>✅</span> <b>Đạt</b>
+        <div class="cl-desc">${esc(it.desc)}</div>
+        <div class="cl-rating-bar">
+          <button type="button" class="rate-btn rate-1 ${curVal === 1 ? "on" : ""}" data-v="1">
+            <span class="rate-num">1</span>
+            <span class="rate-text">Kém</span>
           </button>
-          <button type="button" class="cl-btn ${clResult[it.id] === "fail" ? "on" : ""}" data-v="fail">
-            <span>❌</span> <b>Không đạt</b>
+          <button type="button" class="rate-btn rate-2 ${curVal === 2 ? "on" : ""}" data-v="2">
+            <span class="rate-num">2</span>
+            <span class="rate-text">Yếu</span>
+          </button>
+          <button type="button" class="rate-btn rate-3 ${curVal === 3 ? "on" : ""}" data-v="3">
+            <span class="rate-num">3</span>
+            <span class="rate-text">Đạt</span>
+          </button>
+          <button type="button" class="rate-btn rate-4 ${curVal === 4 ? "on" : ""}" data-v="4">
+            <span class="rate-num">4</span>
+            <span class="rate-text">Tốt</span>
+          </button>
+          <button type="button" class="rate-btn rate-5 ${curVal === 5 ? "on" : ""}" data-v="5">
+            <span class="rate-num">5</span>
+            <span class="rate-text">Xuất sắc</span>
           </button>
         </div>
-      </div>`).join("")}
-  `).join("");
+      </div>
+    `;
+  }).join("");
   updateScore();
 }
 
 function calcScore(result) {
-  const vals = Object.values(result);
-  const p = vals.filter((v) => v === "pass").length;
-  const fl = vals.filter((v) => v === "fail").length;
-  return p + fl ? Math.round((p / (p + fl)) * 100) : null;
+  const keys = Object.keys(result || {});
+  if (!keys.length) return null;
+  let sum = 0;
+  let count = 0;
+  keys.forEach((k) => {
+    const v = result[k];
+    if (v === "pass") { sum += 5; count++; }
+    else if (v === "fail") { sum += 1; count++; }
+    else if (typeof v === "number" || !isNaN(Number(v))) {
+      sum += Number(v);
+      count++;
+    }
+  });
+  if (!count) return null;
+  return Math.round((sum / (count * 5)) * 100);
 }
 
 function updateScore() {
-  const s = calcScore(clResult);
   const box = $("#scoreBox");
-  const fails = Object.values(clResult).filter((v) => v === "fail").length;
+  if (!box) return;
   const done = Object.keys(clResult).length;
-  const total = Object.keys(ITEM_MAP).length;
+  const total = CHECKLIST.length;
 
   if (done === 0) {
     box.innerHTML = `<span style="color:#64748b">Chưa đánh giá</span>`;
-  } else if (done < total) {
-    box.innerHTML = `<span style="color:#0284c7">Đã chọn ${done}/${total}</span>`;
-  } else {
-    box.innerHTML = fails === 0
-      ? `<span style="color:var(--ok-green)">✅ ĐẠT (100%)</span>`
-      : `<span style="color:var(--fail-red)">❌ K.ĐẠT (${fails} lỗi)</span>`;
+    return;
   }
+
+  let sum = 0;
+  let fails = 0;
+  Object.values(clResult).forEach((v) => {
+    const num = Number(v) || (v === "pass" ? 5 : 1);
+    sum += num;
+    if (num <= 2 || v === "fail") fails++;
+  });
+
+  const maxPossible = done * 5;
+  const pct = Math.round((sum / maxPossible) * 100);
+
+  let rankText = "";
+  let color = "#15803d";
+  if (pct >= 90) { rankText = "⭐ Xuất sắc"; color = "#15803d"; }
+  else if (pct >= 80) { rankText = "🟢 Tốt"; color = "#059669"; }
+  else if (pct >= 60) { rankText = "🟡 Đạt yêu cầu"; color = "#d97706"; }
+  else { rankText = "🔴 Cần cải thiện"; color = "#dc2626"; }
+
+  let statusMsg = "";
+  if (done < total) {
+    statusMsg = `<span style="color:#d97706;font-size:11px;display:block">Đang chấm ${done}/${total} tiêu chí</span>`;
+  }
+
+  box.innerHTML = `
+    <div style="font-size:15px;font-weight:800;color:${color}">
+      ${sum}/${maxPossible} điểm <span style="font-size:12px;font-weight:600">(${pct}/100đ)</span>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:${color}">${rankText}${fails > 0 ? ` • ${fails} tiêu chí điểm thấp` : ""}</div>
+    ${statusMsg}
+  `;
 }
 
 $("#checklistItems").addEventListener("click", (e) => {
-  const more = e.target.closest(".cl-more");
-  if (more) {
-    const card = more.closest(".cl-card");
-    const hint = $(".cl-hint", card);
-    hint.hidden = !hint.hidden;
-    more.textContent = hint.hidden ? "Chi tiết ▾" : "Thu gọn ▴";
-    more.setAttribute("aria-expanded", String(!hint.hidden));
-    return;
-  }
-});
-$("#checklistItems").addEventListener("click", (e) => {
-  const b = e.target.closest(".cl-btn");
+  const b = e.target.closest(".rate-btn");
   if (!b) return;
   const card = b.closest(".cl-card");
   const id = card.dataset.id;
-  clResult[id] = b.dataset.v;
+  const val = parseInt(b.dataset.v, 10);
+  clResult[id] = val;
 
-  $$(".cl-btn", card).forEach((x) => x.classList.toggle("on", x === b));
-  card.classList.toggle("fail", b.dataset.v === "fail");
+  $$(".rate-btn", card).forEach((x) => x.classList.toggle("on", x === b));
+  card.classList.toggle("fail", val <= 2);
+  card.classList.toggle("rated", val >= 3);
+  const badge = $(".cl-cur-badge", card);
+  if (badge) badge.innerHTML = ratingBadgeLabel(val);
   updateScore();
 });
 
 $("#allPass").addEventListener("click", () => {
-  Object.keys(ITEM_MAP).forEach((id) => (clResult[id] = "pass"));
+  CHECKLIST.forEach((it) => (clResult[it.id] = 5));
   renderChecklistItems();
-  toast("Đã chọn tất cả Đạt ✓");
+  toast("Đã chấm 5★ (Xuất sắc) cho tất cả tiêu chí ✓");
 });
 
 
@@ -811,7 +869,7 @@ $("#checklistForm").addEventListener("submit", async (e) => {
   if (missing.length) return toast(`Còn ${missing.length} tiêu chí chưa chọn kết quả`);
   if (!clUp.files.length) return toast("Vui lòng chụp ảnh hoặc tải video minh chứng");
 
-  const fails = Object.keys(clResult).filter((id) => clResult[id] === "fail");
+  const fails = Object.keys(clResult).filter((id) => Number(clResult[id]) <= 2 || clResult[id] === "fail");
   const score = calcScore(clResult) ?? 100;
   const area = f.area.value.trim();
   const date = f.date.value;
@@ -820,23 +878,33 @@ $("#checklistForm").addEventListener("submit", async (e) => {
   const authorName = currentUser?.displayName || "Nhân sự Vận hành";
   const authorEmail = currentUser?.email || "";
 
-  const breakdownHtml = CHECKLIST.map((g) =>
-    g.items.map((it) => {
-      const isPass = clResult[it.id] === "pass";
-      return `
-        <div class="confirm-cl-item">
-          <span>${esc(it.name)}</span>
-          <span class="${isPass ? "badge-pass" : "badge-fail"}">${isPass ? "✓ Đạt" : "✗ Không đạt"}</span>
-        </div>
-      `;
-    }).join("")
-  ).join("");
+  let totalPoints = 0;
+  Object.values(clResult).forEach((v) => {
+    totalPoints += Number(v) || (v === "pass" ? 5 : 1);
+  });
+
+  const breakdownHtml = CHECKLIST.map((it) => {
+    const val = Number(clResult[it.id]) || 0;
+    let badgeClass = "badge-pass";
+    let badgeTxt = `✓ ${val}/5 điểm`;
+    if (val === 5) { badgeTxt = "⭐ 5/5 (Xuất sắc)"; }
+    else if (val === 4) { badgeTxt = "🟢 4/5 (Tốt)"; }
+    else if (val === 3) { badgeTxt = "🟡 3/5 (Đạt)"; }
+    else if (val === 2) { badgeClass = "badge-fail"; badgeTxt = "🟠 2/5 (Yếu)"; }
+    else if (val === 1) { badgeClass = "badge-fail"; badgeTxt = "🔴 1/5 (Kém)"; }
+    return `
+      <div class="confirm-cl-item">
+        <span style="font-weight:600">${it.stt}. ${esc(it.name)}</span>
+        <span class="${badgeClass}">${badgeTxt}</span>
+      </div>
+    `;
+  }).join("");
 
   const contentHtml = `
     <div class="confirm-table">
       <div class="confirm-row">
         <span class="confirm-label">Loại báo cáo:</span>
-        <span class="confirm-val highlight">📋 Checklist Kiểm tra Nhân sự</span>
+        <span class="confirm-val highlight">📋 Checklist Đánh giá Dịch vụ</span>
       </div>
       <div class="confirm-row">
         <span class="confirm-label">Ngày kiểm tra:</span>
@@ -855,8 +923,10 @@ $("#checklistForm").addEventListener("submit", async (e) => {
         <span class="confirm-val" style="color:#d97706;font-size:14px">${esc(employee)}</span>
       </div>
       <div class="confirm-row">
-        <span class="confirm-label">Điểm đánh giá:</span>
-        <span class="confirm-val" style="color:${score >= 80 ? "#15803d" : "#b91c1c"}">${score} / 100 điểm</span>
+        <span class="confirm-label">Tổng điểm đánh giá:</span>
+        <span class="confirm-val" style="color:${score >= 80 ? "#15803d" : "#b91c1c"}">
+          ${totalPoints}/40 điểm <span style="font-size:12px">(${score}/100đ)</span>
+        </span>
       </div>
       <div class="confirm-row">
         <span class="confirm-label">Minh chứng (ảnh/video):</span>
@@ -868,7 +938,7 @@ $("#checklistForm").addEventListener("submit", async (e) => {
         <span class="confirm-val">${esc(note)}</span>
       </div>` : ""}
 
-      <div style="margin-top:10px;font-size:12px;font-weight:700;color:#334155">Kết quả 4 tiêu chí đánh giá:</div>
+      <div style="margin-top:10px;font-size:12px;font-weight:700;color:#334155">Kết quả 8 tiêu chí đánh giá (1-5):</div>
       <div class="confirm-cl-breakdown">
         ${breakdownHtml}
       </div>
@@ -1112,9 +1182,22 @@ function openDetail(r) {
     const rows = Object.keys(ITEM_MAP)
       .map((id) => {
         const v = r.result?.[id];
-        const isFail = v === "fail";
-        return `<li style="color:${isFail ? "var(--fail-red)" : "var(--ok-green)"};margin-bottom:4px">
-          ${esc(itemLabel(id))}: <b>${isFail ? "❌ Không đạt" : "✅ Đạt"}</b>
+        const num = Number(v);
+        let badge = "";
+        let color = "var(--ok-green)";
+        if (!isNaN(num) && num > 0) {
+          if (num === 5) badge = "⭐ 5/5 Xuất sắc";
+          else if (num === 4) badge = "🟢 4/5 Tốt";
+          else if (num === 3) badge = "🟡 3/5 Đạt";
+          else if (num === 2) { badge = "🟠 2/5 Yếu"; color = "var(--fail-red)"; }
+          else if (num === 1) { badge = "🔴 1/5 Kém"; color = "var(--fail-red)"; }
+        } else {
+          const isFail = v === "fail";
+          badge = isFail ? "❌ Không đạt" : "✅ Đạt";
+          color = isFail ? "var(--fail-red)" : "var(--ok-green)";
+        }
+        return `<li style="color:${color};margin-bottom:6px;font-size:13px">
+          ${esc(itemLabel(id))}: <b>${badge}</b>
         </li>`;
       })
       .join("");
@@ -1183,7 +1266,13 @@ const toCsv = (rows) => "\uFEFF" + rows.map((l) => l.map(csvCell).join(",")).joi
 
 $("#exportCsv").onclick = async () => {
   const all = (await allRecords()).sort((a, b) => a.date.localeCompare(b.date));
-  const res = (r, id) => ({ pass: "Đạt", fail: "Không đạt" }[r.result?.[id]] || "");
+  const res = (r, id) => {
+    const v = r.result?.[id];
+    if (v === "pass") return "Đạt (5)";
+    if (v === "fail") return "Không đạt (1)";
+    if (v !== undefined && v !== null && v !== "") return `${v}/5 điểm`;
+    return "";
+  };
   const cl = all.filter((r) => r.type === "checklist");
   download(
     `checklist_${fmt(new Date())}.csv`,
@@ -1318,10 +1407,16 @@ $("#seedDemo").onclick = async () => {
       const idx = Math.floor(Math.random() * staff.length);
       const emp = staff[idx];
       const result = {};
-      Object.keys(ITEM_MAP).forEach(
-        (id) => (result[id] = Math.random() < skill[idx] * (id.startsWith("tien") || id.startsWith("don") ? 1.2 : 0.8) ? "fail" : "pass")
-      );
-      const fails = Object.keys(result).filter((id) => result[id] === "fail");
+      CHECKLIST.forEach((it) => {
+        const r = Math.random();
+        let pts = 5;
+        if (r < skill[idx] * 0.3) pts = 2;
+        else if (r < skill[idx] * 0.7) pts = 3;
+        else if (r < skill[idx] * 1.2) pts = 4;
+        else pts = 5;
+        result[it.id] = pts;
+      });
+      const fails = Object.keys(result).filter((id) => Number(result[id]) <= 2);
       await putRecord({
         id: uid(),
         type: "checklist",

@@ -1,18 +1,14 @@
 /* =========================================================
    Firebase Configuration – Trainghienkhachhang.online
-   =========================================================
-   Hướng dẫn:
-   1. Vào https://console.firebase.google.com -> Tạo dự án mới (miễn phí).
-   2. Bật Firestore Database (chọn chế độ Test mode hoặc thêm Security Rules).
-   3. Bật Storage (để lưu trữ ảnh/video).
-   4. Thêm ứng dụng Web (biểu tượng </>) -> Copy đoạn firebaseConfig dán vào dưới đây.
+   Dự án: trainghiem-khachhang
    ========================================================= */
 
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAhtNp-JTKMMNUVo4suOOdA4CrT9C3XIoU",
+  authDomain: "trainghiem-khachhang.firebaseapp.com",
+  projectId: "trainghiem-khachhang",
+  storageBucket: "trainghiem-khachhang.firebasestorage.app",
+  messagingSenderId: "153568013737",
+  appId: "1:153568013737:web:f24815130800bdcc50a8b8",
+  measurementId: "G-QP5WV9JX5D"
 };

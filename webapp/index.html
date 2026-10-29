@@ -397,9 +397,12 @@
             <div id="firebaseStatus" style="font-size:12px;font-weight:700;margin-bottom:10px;color:#0284c7">
               Trạng thái: ⚪ Chưa kết nối (đang chạy bộ nhớ máy)
             </div>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="button" class="btn-main" id="btnConfigFirebase" style="padding:10px;font-size:12px">
                 ⚙️ Cấu hình Firebase
+              </button>
+              <button type="button" class="btn-sub" id="btnSyncLocalToFirebase" style="padding:10px;font-size:12px;background:#e0f2fe;color:#0284c7;font-weight:700">
+                ⬆️ Đồng bộ lên Cloud
               </button>
               <button type="button" class="btn-sub" id="btnDisconnectFirebase" style="padding:10px;font-size:12px;display:none">
                 Ngắt kết nối
@@ -465,10 +468,10 @@
   <!-- Toast notification -->
   <div class="toast" id="toast"></div>
 
-  <!-- Firebase SDK (Compat mode for browser) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <!-- Firebase SDK Local & Config -->
+  <script src="firebase-app.js"></script>
+  <script src="firebase-firestore.js"></script>
+  <script src="firebase-storage.js"></script>
   <script src="firebase-config.js"></script>
 
   <script src="app.js"></script>

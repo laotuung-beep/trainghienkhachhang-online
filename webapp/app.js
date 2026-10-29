@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    Trainghienkhachhang.online – Mobile-First Web App
    Giao diện chuẩn điện thoại theo mẫu baocaovanhanh.online
    Lưu trữ: IndexedDB (cả hình ảnh & video) – chạy hoàn toàn offline
@@ -243,42 +243,7 @@ function initFirebase() {
 
     fbDb.collection("records").onSnapshot(
       () => {
-        
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard();
+        renderDashboard();
         refreshLists();
       },
       (err) => console.warn("Firestore snapshot:", err)
@@ -427,42 +392,7 @@ function switchTab(tabId) {
   $("#headerDate").classList.toggle("hidden", tabId !== "dashboard");
   window.scrollTo({ top: 0, behavior: "smooth" });
 
-  if (tabId === "dashboard") 
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard();
+  if (tabId === "dashboard") renderDashboard();
   if (tabId === "history") renderHistory();
   if (tabId === "settings") renderStorage();
 }
@@ -708,78 +638,8 @@ async function refreshLists() {
 
 // ---------- Dashboard ----------
 let curWeek = weekStart(new Date());
-$("#prevWeek").onclick = () => { curWeek = addDays(curWeek, -7); 
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard(); };
-$("#nextWeek").onclick = () => { curWeek = addDays(curWeek, 7); 
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard(); };
+$("#prevWeek").onclick = () => { curWeek = addDays(curWeek, -7); renderDashboard(); };
+$("#nextWeek").onclick = () => { curWeek = addDays(curWeek, 7); renderDashboard(); };
 
 function inRange(r, start) {
   const a = fmt(start), b = fmt(addDays(start, 6));
@@ -1194,42 +1054,7 @@ $("#seedDemo").onclick = async () => {
   }
 
   toast("Đã tạo dữ liệu mẫu thành công");
-  
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard();
+  renderDashboard();
   renderStorage();
   refreshLists();
 };
@@ -1248,42 +1073,7 @@ async function renderStorage() {
 
 // Header buttons
 $("#btnRefresh")?.addEventListener("click", () => {
-  
-// Firebase UI Buttons
-$("#btnConfigFirebase")?.addEventListener("click", () => {
-  const current = localStorage.getItem(FB_KEY) || (window.FIREBASE_CONFIG ? JSON.stringify(window.FIREBASE_CONFIG, null, 2) : "");
-  const input = prompt(
-    "Dán đoạn cấu hình firebaseConfig (dạng JSON hoặc object):\nVí dụ:\n{\n  \"apiKey\": \"...\",\n  \"projectId\": \"...\",\n  \"storageBucket\": \"...\"\n}",
-    current
-  );
-  if (!input) return;
-  try {
-    let cfg;
-    const cleaned = input.replace(/^[^{]*{/, "{").replace(/}[^}]*$/, "}");
-    try {
-      cfg = JSON.parse(cleaned);
-    } catch {
-      cfg = new Function("return " + cleaned)();
-    }
-    if (!cfg.apiKey || !cfg.projectId) throw new Error("Thiếu apiKey hoặc projectId");
-    localStorage.setItem(FB_KEY, JSON.stringify(cfg));
-    toast("✅ Đã lưu cấu hình Firebase! Đang kết nối...");
-    initFirebase();
-    renderDashboard();
-  } catch (err) {
-    alert("Cấu hình không hợp lệ: " + err.message);
-  }
-});
-
-$("#btnDisconnectFirebase")?.addEventListener("click", () => {
-  if (!confirm("Ngắt kết nối Firebase và chuyển về chạy bộ nhớ máy?")) return;
-  localStorage.removeItem(FB_KEY);
-  toast("Đã ngắt kết nối Firebase");
-  location.reload();
-});
-
-initFirebase();
-renderDashboard();
+  renderDashboard();
   renderHistory();
   refreshLists();
   toast("Đã làm mới dữ liệu ✓");
@@ -1339,6 +1129,24 @@ $("#btnDisconnectFirebase")?.addEventListener("click", () => {
   localStorage.removeItem(FB_KEY);
   toast("Đã ngắt kết nối Firebase");
   location.reload();
+});
+
+$("#btnSyncLocalToFirebase")?.addEventListener("click", async () => {
+  if (!fbDb) return toast("Chưa kết nối Firebase");
+  toast("Đang tải dữ liệu lên Cloud...");
+  try {
+    const local = await tx("readonly", (s) => s.getAll());
+    let count = 0;
+    for (const r of local) {
+      await putRecord(r);
+      count++;
+    }
+    toast(`✅ Đã đồng bộ ${count} báo cáo lên Firebase Cloud!`);
+    renderDashboard();
+    renderStorage();
+  } catch (err) {
+    alert("Lỗi đồng bộ: " + err.message);
+  }
 });
 
 initFirebase();

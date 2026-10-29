@@ -1416,7 +1416,9 @@ $("#btnGoogleLogin")?.addEventListener("click", async () => {
         return;
       } catch {}
     }
-    if (err.code === "auth/operation-not-allowed" || err.code === "auth/configuration-not-found") {
+    if (err.code === "auth/unauthorized-domain") {
+      alert("⚠️ Tên miền chưa được thêm vào Firebase Authorized Domains:\n\n1. Vào Firebase Console -> Authentication -> Settings\n2. Kéo xuống mục 'Authorized domains'\n3. Bấm 'Add domain' và dán: " + location.hostname + "\n\n(Sau khi thêm, bạn có thể đăng nhập Google bình thường ngay lập tức!)");
+    } else if (err.code === "auth/operation-not-allowed" || err.code === "auth/configuration-not-found") {
       alert("⚠️ Tài khoản Google chưa được kích hoạt trong Firebase Console.\n\nVui lòng vào Firebase Console -> Authentication -> Sign-in method -> Bật Google -> Save.\n\n(Hiện tại bạn có thể bấm 'Dùng thử nhanh (Chế độ Khách)' để vào trải nghiệm ngay).");
     } else {
       alert("Đăng nhập Google: " + (err.message || err));

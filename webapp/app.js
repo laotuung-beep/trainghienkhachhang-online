@@ -278,14 +278,100 @@ function updateAuthUI() {
   if (isUserAdmin) {
     document.body.classList.remove("role-staff");
     document.body.classList.add("role-admin");
+    setupRealtimeLoginsListener();
   } else {
     document.body.classList.remove("role-admin");
     document.body.classList.add("role-staff");
   }
 
+  updateAdminGmailUI();
+
   const activeTab = document.querySelector(".b-tab.active")?.dataset?.tab;
   if (!isUserAdmin && (activeTab === "history" || activeTab === "settings")) {
     switchTab("dashboard");
+  }
+}
+
+// ---------- Realtime Login Tracking & Notifications ----------
+let realtimeLoginsUnsub = null;
+let realtimeLoginsList = [];
+let hasInitialLoginsLoaded = false;
+let currentAlertsTab = "logins";
+
+async function recordLoginEvent(user) {
+  if (!user) return;
+  const loginEntry = {
+    uid: user.uid || "",
+    displayName: user.displayName || user.email || "Nhân sự Vận hành",
+    email: user.email || "",
+    photoURL: user.photoURL || "",
+    timestamp: Date.now(),
+    isoDate: new Date().toISOString(),
+    dateStr: fmt(new Date()),
+    timeStr: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+    device: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Mobile" : "Desktop"
+  };
+
+  try {
+    const localLogins = JSON.parse(localStorage.getItem("ete_recent_logins") || "[]");
+    localLogins.unshift(loginEntry);
+    localStorage.setItem("ete_recent_logins", JSON.stringify(localLogins.slice(0, 30)));
+    realtimeLoginsList = localLogins;
+    const loginsCountEl = $("#loginsCount");
+    if (loginsCountEl) loginsCountEl.textContent = localLogins.length;
+  } catch {}
+
+  if (fbDb) {
+    try {
+      await fbDb.collection("logins").add(loginEntry);
+    } catch (e) {
+      console.warn("Could not save login event to Firestore:", e);
+    }
+  }
+}
+
+function setupRealtimeLoginsListener() {
+  if (!fbDb) return;
+  if (realtimeLoginsUnsub) return;
+
+  try {
+    realtimeLoginsUnsub = fbDb
+      .collection("logins")
+      .orderBy("timestamp", "desc")
+      .limit(30)
+      .onSnapshot(
+        (snapshot) => {
+          const items = [];
+          snapshot.forEach((doc) => {
+            items.push({ id: doc.id, ...doc.data() });
+          });
+
+          if (hasInitialLoginsLoaded && snapshot.docChanges) {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === "added") {
+                const data = change.doc.data();
+                const isRecent = data.timestamp && Date.now() - data.timestamp < 180000;
+                if (isRecent && data.uid !== currentUser?.uid && isUserAdmin) {
+                  toast(`🔔 ${data.displayName || 'Nhân sự'} (${data.device || 'Thiết bị'}) vừa đăng nhập!`);
+                }
+              }
+            });
+          }
+          hasInitialLoginsLoaded = true;
+          realtimeLoginsList = items;
+
+          const loginsCountEl = $("#loginsCount");
+          if (loginsCountEl) loginsCountEl.textContent = items.length;
+
+          const alertsModal = $("#alertsModal");
+          if (alertsModal && !alertsModal.hidden && currentAlertsTab === "logins") {
+            renderRealtimeLogins();
+          }
+        },
+        (err) => console.warn("Logins snapshot error:", err)
+      );
+  } catch (err) {
+    console.warn("setupRealtimeLoginsListener error:", err);
   }
 }
 
@@ -342,6 +428,10 @@ function initFirebase() {
             photoURL: user.photoURL || ""
           };
           localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+          if (!sessionStorage.getItem("ete_login_logged_" + user.uid)) {
+            sessionStorage.setItem("ete_login_logged_" + user.uid, "1");
+            recordLoginEvent(currentUser);
+          }
         } else {
           const cached = localStorage.getItem("ete_cached_user");
           if (cached) {
@@ -356,6 +446,8 @@ function initFirebase() {
 
     if (statusEl) statusEl.innerHTML = `Trạng thái: 🟢 Đã kết nối Cloud (<b style="color:#0284c7">${esc(cfg.projectId || "Firebase")}</b>)`;
     if (discBtn) discBtn.style.display = "inline-block";
+
+    setupRealtimeLoginsListener();
 
     fbDb.collection("records").onSnapshot(
       () => {
@@ -1460,11 +1552,159 @@ $("#btnRefresh")?.addEventListener("click", () => {
   toast("Đã làm mới dữ liệu ✓");
 });
 
+function timeAgo(ts) {
+  if (!ts) return "";
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 60) return "Vừa xong";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} phút trước`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} giờ trước`;
+  const day = Math.floor(hr / 24);
+  return `${day} ngày trước`;
+}
+
+function renderRealtimeLogins() {
+  const container = $("#alertsModalContent");
+  if (!container) return;
+
+  const logins = realtimeLoginsList.length
+    ? realtimeLoginsList
+    : JSON.parse(localStorage.getItem("ete_recent_logins") || "[]");
+
+  if (!logins.length) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:30px 15px;color:#94a3b8">
+        <div style="font-size:36px;margin-bottom:8px">👥</div>
+        <div style="font-weight:700;color:#64748b">Chưa có lượt đăng nhập nào</div>
+        <p style="font-size:12px;margin-top:4px">Các tài khoản đăng nhập Google hoặc Chế độ Khách sẽ xuất hiện realtime tại đây.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${logins
+        .map((lg) => {
+          const initial = (lg.displayName || lg.email || "U").charAt(0).toUpperCase();
+          const avatarHtml = lg.photoURL
+            ? `<img src="${esc(lg.photoURL)}" alt="avatar" referrerpolicy="no-referrer" style="width:100%;height:100%;border-radius:50%;object-fit:cover" />`
+            : initial;
+          const isMobile = lg.device === "Mobile";
+          const ago = lg.timestamp ? timeAgo(lg.timestamp) : "";
+
+          return `
+          <div class="login-item-card" style="display:flex;align-items:center;gap:12px;background:#fff;padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+            <div style="position:relative;width:40px;height:40px;flex-shrink:0">
+              <div class="login-avatar-circle" style="width:40px;height:40px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;overflow:hidden">
+                ${avatarHtml}
+              </div>
+              <span class="online-dot" style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#10b981;border:2px solid #fff;border-radius:50%"></span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <div style="font-weight:700;font-size:13px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lg.displayName)}</div>
+                <span style="font-size:10px;color:#94a3b8;flex-shrink:0">${ago || esc(lg.timeStr || '')}</span>
+              </div>
+              <div style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lg.email || '(Không có email)')}</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <span class="device-pill" style="font-size:10px;padding:2px 7px;border-radius:20px;background:#f1f5f9;color:#475569;font-weight:600">
+                  ${isMobile ? "📱 Mobile" : "💻 Máy tính"}
+                </span>
+                <span style="font-size:10px;color:#64748b">${esc(lg.timeStr || '')} ${esc(lg.dateStr || '')}</span>
+              </div>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+async function renderWeeklyFailsAlerts() {
+  const container = $("#alertsModalContent");
+  if (!container) return;
+
+  const all = await allRecords();
+  const wk = all.filter((r) => inRange(r, curWeek));
+  const cl = wk.filter((r) => r.type === "checklist");
+  const st = staffStats(cl);
+  const vio = Object.values(st).filter((s) => s.fails > 0).sort((a, b) => b.fails - a.fails || a.avg - b.avg);
+
+  const failsCountEl = $("#failsCount");
+  if (failsCountEl) failsCountEl.textContent = vio.length;
+
+  if (!vio.length) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:30px 15px;color:#10b981">
+        <div style="font-size:36px;margin-bottom:8px">🎉</div>
+        <div style="font-weight:700;color:#065f46">Tuần này chưa có vi phạm nào!</div>
+        <p style="font-size:12px;margin-top:4px;color:#047857">Tất cả nhân sự đều đạt chuẩn dịch vụ khách hàng xuất sắc.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${vio
+        .map((s, i) => `
+        <div style="background:#fff;padding:12px 14px;border-radius:12px;border:1px solid #fee2e2;box-shadow:0 1px 3px rgba(0,0,0,0.03);display:flex;align-items:flex-start;gap:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#fef2f2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0">
+            ${i + 1}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700;font-size:13px;color:#0f172a">${esc(s.name)}</div>
+              <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:10px">${s.fails} lỗi</span>
+            </div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">
+              ${[...s.areas].map(esc).join(", ")} · TB: <b style="color:${s.avg >= 90 ? '#10b981' : '#f59e0b'}">${s.avg}%</b> (${s.n} lượt)
+            </div>
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+              ${Object.entries(s.crit)
+                .sort((a, b) => b[1] - a[1])
+                .map(([id, c]) => `<span style="font-size:10px;background:#fef2f2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-weight:600">${esc(itemLabel(id))} ×${c}</span>`)
+                .join("")}
+            </div>
+          </div>
+        </div>`)
+        .join("")}
+    </div>`;
+}
+
+function switchAlertsTab(tab) {
+  currentAlertsTab = tab;
+  const tabLogins = $("#tabBtnLogins");
+  const tabFails = $("#tabBtnFails");
+  if (tab === "logins") {
+    tabLogins?.classList.add("active");
+    if (tabLogins) tabLogins.style.borderBottom = "2.5px solid #0e4e46";
+    if (tabLogins) tabLogins.style.color = "#0e4e46";
+    tabFails?.classList.remove("active");
+    if (tabFails) tabFails.style.borderBottom = "none";
+    if (tabFails) tabFails.style.color = "#64748b";
+    renderRealtimeLogins();
+  } else {
+    tabFails?.classList.add("active");
+    if (tabFails) tabFails.style.borderBottom = "2.5px solid #dc2626";
+    if (tabFails) tabFails.style.color = "#dc2626";
+    tabLogins?.classList.remove("active");
+    if (tabLogins) tabLogins.style.borderBottom = "none";
+    if (tabLogins) tabLogins.style.color = "#64748b";
+    renderWeeklyFailsAlerts();
+  }
+}
+
+$("#tabBtnLogins")?.addEventListener("click", () => switchAlertsTab("logins"));
+$("#tabBtnFails")?.addEventListener("click", () => switchAlertsTab("fails"));
+$("#alertsClose")?.addEventListener("click", () => {
+  $("#alertsModal").hidden = true;
+});
+
 $("#btnAlerts")?.addEventListener("click", () => {
-  switchTab("dashboard");
-  setTimeout(() => {
-    $("#sec-top-warnings")?.scrollIntoView({ behavior: "smooth" });
-  }, 100);
+  const modal = $("#alertsModal");
+  if (!modal) return;
+  modal.hidden = false;
+  switchAlertsTab(currentAlertsTab || "logins");
 });
 
 $("#fabScrollTop")?.addEventListener("click", () => {
@@ -1483,6 +1723,7 @@ $("#btnGoogleLogin")?.addEventListener("click", async () => {
       photoURL: ""
     };
     localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+    await recordLoginEvent(currentUser);
     updateAuthUI();
     toast(`👋 Chào mừng ${currentUser.displayName}!`);
     return;
@@ -1501,6 +1742,7 @@ $("#btnGoogleLogin")?.addEventListener("click", async () => {
       photoURL: res.user.photoURL || ""
     };
     localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+    await recordLoginEvent(currentUser);
     updateAuthUI();
     toast(`👋 Đăng nhập thành công! Chào ${currentUser.displayName}`);
   } catch (err) {
@@ -1521,7 +1763,7 @@ $("#btnGoogleLogin")?.addEventListener("click", async () => {
   }
 });
 
-$("#btnGuestMode")?.addEventListener("click", () => {
+$("#btnGuestMode")?.addEventListener("click", async () => {
   currentUser = {
     uid: "guest_" + Date.now(),
     displayName: "Nhân sự Vận hành",
@@ -1529,6 +1771,7 @@ $("#btnGuestMode")?.addEventListener("click", () => {
     photoURL: ""
   };
   localStorage.setItem("ete_cached_user", JSON.stringify(currentUser));
+  await recordLoginEvent(currentUser);
   updateAuthUI();
   toast("Đã đăng nhập chế độ Nhân sự ✓");
 });
@@ -1669,6 +1912,239 @@ $("#btnSyncLocalToFirebase")?.addEventListener("click", async () => {
   } catch (err) {
     alert("Lỗi đồng bộ: " + err.message);
   }
+});
+
+// ---------- Cấu hình Admin Gmail & Báo cáo 7h sáng ----------
+const ADMIN_GMAIL_KEY = "ete_admin_gmail";
+function getAdminGmail() {
+  return localStorage.getItem(ADMIN_GMAIL_KEY) || "phongnhh@sunworld.vn";
+}
+
+function updateAdminGmailUI() {
+  const el = $("#adminEmailDisplay");
+  if (el) el.textContent = getAdminGmail();
+}
+
+$("#btnChangeAdminEmail")?.addEventListener("click", () => {
+  const current = getAdminGmail();
+  const input = prompt("Nhập địa chỉ Gmail Admin nhận thông báo 7h sáng:", current);
+  if (input && input.trim()) {
+    localStorage.setItem(ADMIN_GMAIL_KEY, input.trim());
+    updateAdminGmailUI();
+    toast("✅ Đã cập nhật Gmail Admin: " + input.trim());
+  }
+});
+
+async function getReportData7AM() {
+  const all = await allRecords();
+  const wk = all.filter((r) => inRange(r, curWeek));
+  const cl = wk.filter((r) => r.type === "checklist");
+  const br = wk.filter((r) => r.type === "briefing");
+  const st = staffStats(cl);
+
+  // Top 2 xuất sắc nhất: TB cao nhất, ít lỗi nhất
+  const top2 = Object.values(st)
+    .sort((a, b) => b.avg - a.avg || a.fails - b.fails || b.n - a.n)
+    .slice(0, 2);
+
+  // Top 10 cần cải thiện: có lỗi nhiều nhất, hoặc điểm TB thấp
+  const top10 = Object.values(st)
+    .filter((s) => s.fails > 0 || s.avg < 90)
+    .sort((a, b) => b.fails - a.fails || a.avg - b.avg)
+    .slice(0, 10);
+
+  const startD = curWeek;
+  const endD = addDays(curWeek, 6);
+  const weekRangeStr = `${pad(startD.getDate())}/${pad(startD.getMonth() + 1)} - ${pad(endD.getDate())}/${pad(endD.getMonth() + 1)}/${endD.getFullYear()}`;
+
+  return { top2, top10, clCount: cl.length, brCount: br.length, weekRangeStr };
+}
+
+function buildEmailHtml(data) {
+  const { top2, top10, clCount, brCount, weekRangeStr } = data;
+  const medals = ["🥇", "🥈"];
+
+  const top2Html = top2.length
+    ? top2
+        .map(
+          (s, i) => `
+        <tr style="border-bottom:1px solid #fed7aa">
+          <td style="padding:10px;text-align:center;font-size:20px">${medals[i] || i + 1}</td>
+          <td style="padding:10px">
+            <b style="color:#0f172a;font-size:14px">${esc(s.name)}</b><br />
+            <span style="font-size:12px;color:#64748b">${[...s.areas].map(esc).join(", ")} · ${s.n} lượt kiểm tra</span>
+          </td>
+          <td style="padding:10px;text-align:right">
+            <span style="background:#dcfce7;color:#15803d;font-weight:800;padding:4px 8px;border-radius:6px;font-size:13px">${s.avg}%</span><br />
+            <span style="font-size:11px;color:#16a34a">${s.fails} lỗi</span>
+          </td>
+        </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="3" style="padding:15px;text-align:center;color:#64748b">Chưa có dữ liệu kiểm tra tuần này</td></tr>`;
+
+  const top10Html = top10.length
+    ? top10
+        .map(
+          (s, i) => `
+        <tr style="border-bottom:1px solid #fee2e2">
+          <td style="padding:8px 10px;text-align:center;font-weight:700;color:#dc2626">${i + 1}</td>
+          <td style="padding:8px 10px">
+            <b style="color:#1e293b;font-size:13px">${esc(s.name)}</b><br />
+            <span style="font-size:11px;color:#64748b">${[...s.areas].map(esc).join(", ")} · ${s.n} lượt đánh giá</span>
+            <div style="margin-top:3px;font-size:11px;color:#b91c1c">
+              ${Object.entries(s.crit)
+                .slice(0, 3)
+                .map(([id, c]) => `${esc(itemLabel(id))}: ${c}`)
+                .join(" | ")}
+            </div>
+          </td>
+          <td style="padding:8px 10px;text-align:right">
+            <span style="background:#fef2f2;color:#b91c1c;font-weight:800;padding:3px 7px;border-radius:6px;font-size:12px">${s.fails} lỗi</span><br />
+            <span style="font-size:11px;color:#64748b">TB: ${s.avg}%</span>
+          </td>
+        </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="3" style="padding:15px;text-align:center;color:#16a34a">🎉 Xuất sắc! Không có nhân sự nào vi phạm tiêu chuẩn tuần này.</td></tr>`;
+
+  return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b">
+      <div style="background:linear-gradient(135deg, #0e4e46, #1e3a5f);color:#ffffff;padding:20px;text-align:center">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#fde047;font-weight:700">SUN WORLD BA NA HILLS · VẬN HÀNH TRÒ CHƠI</div>
+        <h2 style="margin:6px 0 2px;font-size:17px;font-weight:800;color:#fff">BẢN TIN 7H SÁNG - NÂNG CAO TRẢI NGHIỆM KHÁCH HÀNG</h2>
+        <div style="font-size:12px;color:#94a3b8">Tuần: ${weekRangeStr} · Báo cáo tự động 07:00</div>
+      </div>
+
+      <div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-around;text-align:center">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#0e4e46">${clCount}</div>
+          <div style="font-size:11px;color:#64748b">Checklist ca</div>
+        </div>
+        <div style="border-right:1px solid #cbd5e1"></div>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#0e4e46">${brCount}</div>
+          <div style="font-size:11px;color:#64748b">Buổi Briefing</div>
+        </div>
+        <div style="border-right:1px solid #cbd5e1"></div>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#dc2626">${top10.length}</div>
+          <div style="font-size:11px;color:#64748b">NS cần kèm cặp</div>
+        </div>
+      </div>
+
+      <div style="padding:16px">
+        <h3 style="margin:0 0 10px;font-size:13px;color:#b45309;display:flex;align-items:center;gap:6px">
+          <span>🏆</span> TOP 2 NHÂN SỰ XUẤT SẮC NHẤT
+        </h3>
+        <table style="width:100%;border-collapse:collapse;background:#fffbeb;border-radius:8px;overflow:hidden;margin-bottom:18px">
+          ${top2Html}
+        </table>
+
+        <h3 style="margin:0 0 10px;font-size:13px;color:#b91c1c;display:flex;align-items:center;gap:6px">
+          <span>⚠️</span> TOP 10 NHÂN SỰ CẦN CẢI THIỆN TIÊU CHUẨN
+        </h3>
+        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #fee2e2">
+          ${top10Html}
+        </table>
+
+        <div style="margin-top:14px;padding:10px 12px;background:#eff6ff;border-radius:8px;font-size:11px;color:#1e40af;line-height:1.5">
+          💡 <b>Gợi ý hành động:</b> Giám sát ca trực ưu tiên quan sát, Briefing đầu ca và nhắc nhở 8 tiêu chuẩn dịch vụ đối với Top 10 nhân sự nêu trên.
+        </div>
+      </div>
+
+      <div style="background:#f1f5f9;padding:10px;text-align:center;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0">
+        Hệ thống Trainghienkhachhang.online · Sun World Ba Na Hills
+      </div>
+    </div>`;
+}
+
+function buildEmailPlainText(data) {
+  const { top2, top10, clCount, brCount, weekRangeStr } = data;
+  let text = `[SUN WORLD BA NA HILLS - BẢN TIN 7H SÁNG]\n`;
+  text += `Nâng cao trải nghiệm khách hàng - Tuần: ${weekRangeStr}\n`;
+  text += `Thống kê: ${clCount} Checklist, ${brCount} Briefing đầu ca\n\n`;
+
+  text += `🏆 TOP 2 XUẤT SẮC NHẤT:\n`;
+  if (top2.length) {
+    top2.forEach((s, i) => {
+      text += `${i + 1}. ${s.name} - Điểm TB: ${s.avg}% (${s.fails} lỗi, ${s.n} lượt)\n`;
+    });
+  } else {
+    text += `(Chưa có dữ liệu đánh giá)\n`;
+  }
+
+  text += `\n⚠️ TOP 10 CẦN CẢI THIỆN TIÊU CHUẨN:\n`;
+  if (top10.length) {
+    top10.forEach((s, i) => {
+      const topCrits = Object.entries(s.crit)
+        .slice(0, 2)
+        .map(([id, c]) => `${itemLabel(id)}: ${c}`)
+        .join(", ");
+      text += `${i + 1}. ${s.name}: ${s.fails} lỗi (TB ${s.avg}%) - ${topCrits}\n`;
+    });
+  } else {
+    text += `(Không có nhân sự vi phạm)\n`;
+  }
+
+  text += `\nTruy cập hệ thống: https://laotuung-beep.github.io/trainghienkhachhang-online/`;
+  return text;
+}
+
+let lastGeneratedEmailData = null;
+
+$("#btnSendTestEmail")?.addEventListener("click", async () => {
+  toast("Đang tổng hợp dữ liệu Top 2 & Top 10...");
+  const data = await getReportData7AM();
+  lastGeneratedEmailData = data;
+  const html = buildEmailHtml(data);
+  const container = $("#emailPreviewBody");
+  if (container) container.innerHTML = html;
+  const modal = $("#emailPreviewModal");
+  if (modal) modal.hidden = false;
+});
+
+$("#emailPreviewClose")?.addEventListener("click", () => {
+  $("#emailPreviewModal").hidden = true;
+});
+
+$("#btnCopyEmailHtml")?.addEventListener("click", async () => {
+  if (!lastGeneratedEmailData) return;
+  const plainText = buildEmailPlainText(lastGeneratedEmailData);
+  try {
+    await navigator.clipboard.writeText(plainText);
+    toast("📋 Đã sao chép nội dung bản tin vào bộ nhớ tạm!");
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = plainText;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    toast("📋 Đã sao chép nội dung bản tin!");
+  }
+});
+
+$("#btnLaunchGmail")?.addEventListener("click", () => {
+  if (!lastGeneratedEmailData) return;
+  const adminEmail = getAdminGmail();
+  const subject = `[7H SÁNG] Báo cáo Trải nghiệm Khách hàng Sun World - Tuần ${lastGeneratedEmailData.weekRangeStr}`;
+  const plainText = buildEmailPlainText(lastGeneratedEmailData);
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(adminEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainText)}`;
+  window.open(gmailUrl, "_blank");
+});
+
+$("#btnViewAppsScript")?.addEventListener("click", () => {
+  alert(
+    "🤖 HƯỚNG DẪN TỰ ĐỘNG GỬI GMAIL ĐÚNG 7H SÁNG (HOÀN TOÀN TỰ ĐỘNG):\n\n" +
+      "File mã nguồn đã được tạo sẵn tại: scripts/daily_report_7am.js trong dự án.\n\n" +
+      "Các bước cài đặt 1 lần duy nhất trên Google Apps Script:\n" +
+      "1. Truy cập https://script.google.com và tạo dự án mới 'BaoCao7hSang_SunWorld'\n" +
+      "2. Copy toàn bộ nội dung file 'scripts/daily_report_7am.js' dán vào Code.gs\n" +
+      "3. Điền Gmail Admin của bạn vào biến ADMIN_EMAIL (dòng 14)\n" +
+      "4. Chọn hàm 'setupDaily7AMTrigger' và bấm 'Run' (Chạy) 1 lần để kích hoạt hẹn giờ 7h sáng mỗi ngày.\n\n" +
+      "✨ Từ đó trở đi, đúng 7h00 sáng mỗi ngày Google Cloud sẽ tự động tổng hợp Top 2 & Top 10 từ Firebase và gửi về hộp thư Gmail của bạn!"
+  );
 });
 
 initFirebase();

@@ -409,6 +409,32 @@
               </button>
             </div>
           </div>
+
+          <!-- Daily 7AM Email Notification Card (Admin Only) -->
+          <div class="admin-only-feature" style="margin-top:14px;padding:14px;border:1.5px solid #fed7aa;background:#fffaf5;border-radius:14px">
+            <div class="sec-title" style="margin-bottom:6px">
+              <span class="sec-icon" style="background:#ffedd5">📧</span>
+              <h3 style="color:#c2410c">THÔNG BÁO 7H SÁNG VỀ GMAIL ADMIN</h3>
+            </div>
+            <p class="card-caption" style="margin-left:0;margin-bottom:10px">Tự động tổng hợp Top 2 nhân sự xuất sắc & Top 10 cần cải thiện gửi về Gmail Admin đúng 7h sáng mỗi ngày.</p>
+            
+            <div style="background:#fff;padding:10px 12px;border-radius:10px;border:1px solid #fed7aa;margin-bottom:12px">
+              <div style="font-size:11px;color:#9a3412;font-weight:700">Gmail Admin nhận báo cáo:</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+                <b id="adminEmailDisplay" style="font-size:13px;color:#1e293b">phongnhh@sunworld.vn</b>
+                <button type="button" id="btnChangeAdminEmail" style="border:none;background:#ffedd5;color:#c2410c;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">Thay đổi</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn-main" id="btnSendTestEmail" style="padding:10px 12px;font-size:12px;background:linear-gradient(135deg, #c2410c, #ea580c)">
+                ✉️ Xem trước & Gửi thử ngay
+              </button>
+              <button type="button" class="btn-sub" id="btnViewAppsScript" style="padding:10px 12px;font-size:12px;background:#fef3c7;color:#b45309;font-weight:700">
+                📋 Hướng dẫn tự động 7h (Apps Script)
+              </button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -499,6 +525,50 @@
       <div class="confirm-actions">
         <button type="button" class="btn-cancel" id="btnConfirmCancel">✏️ Kiểm tra lại</button>
         <button type="button" class="btn-ok" id="btnConfirmOk">✅ Xác nhận & Gửi lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= NOTIFICATIONS & REALTIME LOGINS MODAL ================= -->
+  <div class="modal" id="alertsModal" hidden>
+    <div class="modal-box" style="max-width:440px;padding:0;overflow:hidden">
+      <div style="background:linear-gradient(135deg, #0e4e46, #1e3a5f);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">🔔</span>
+          <h3 style="margin:0;font-size:16px;font-weight:800">Thông báo Realtime</h3>
+        </div>
+        <button class="modal-close" id="alertsClose" style="position:static;color:#fff">✕</button>
+      </div>
+
+      <div class="alerts-tab-bar" style="display:flex;border-bottom:1px solid #e2e8f0;background:#f8fafc">
+        <button type="button" class="alerts-sub-tab active" data-tab="logins" id="tabBtnLogins" style="flex:1;padding:12px;font-weight:700;font-size:13px;border:none;background:none;cursor:pointer;border-bottom:2.5px solid #0e4e46;color:#0e4e46">
+          👥 Đăng nhập mới (<span id="loginsCount">0</span>)
+        </button>
+        <button type="button" class="alerts-sub-tab" data-tab="fails" id="tabBtnFails" style="flex:1;padding:12px;font-weight:600;font-size:13px;border:none;background:none;cursor:pointer;color:#64748b">
+          ⚠️ Vi phạm tuần (<span id="failsCount">0</span>)
+        </button>
+      </div>
+
+      <div style="padding:14px;max-height:60vh;overflow-y:auto" id="alertsModalContent">
+        <!-- Dynamic content: Realtime Logins or Failures -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= EMAIL PREVIEW MODAL ================= -->
+  <div class="modal" id="emailPreviewModal" hidden>
+    <div class="modal-box" style="max-width:540px;padding:0;overflow:hidden">
+      <div style="background:linear-gradient(135deg, #c2410c, #ea580c);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span>📧</span>
+          <h3 style="margin:0;font-size:15px;font-weight:800">Bản tin Email 7h sáng (Top 2 & Top 10)</h3>
+        </div>
+        <button class="modal-close" id="emailPreviewClose" style="position:static;color:#fff">✕</button>
+      </div>
+      <div id="emailPreviewBody" style="padding:16px;max-height:65vh;overflow-y:auto;background:#f8fafc"></div>
+      <div style="padding:12px 18px;background:#fff;border-top:1px solid #e2e8f0;display:flex;gap:10px">
+        <button type="button" class="btn-sub" id="btnCopyEmailHtml" style="flex:1;padding:10px;font-size:12px">📋 Sao chép nội dung</button>
+        <button type="button" class="btn-main" id="btnLaunchGmail" style="flex:1.5;padding:10px;font-size:12px;background:linear-gradient(135deg,#c2410c,#ea580c)">🚀 Mở Gmail gửi ngay</button>
       </div>
     </div>
   </div>

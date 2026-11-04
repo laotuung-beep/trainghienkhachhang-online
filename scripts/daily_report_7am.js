@@ -61,11 +61,14 @@ function sendDaily7AMReport() {
     const today = new Date();
     const todayStr = Utilities.formatDate(today, "Asia/Ho_Chi_Minh", "dd/MM/yyyy");
 
-    // Lấy ngày đầu tuần (Thứ 2)
+    // Chu kỳ tuần: Thứ 5 tuần này đến Thứ 4 tuần sau (Tuần 1: 29/10/2026 - 04/11/2026)
     const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-    const weekStartStr = Utilities.formatDate(monday, "Asia/Ho_Chi_Minh", "yyyy-MM-dd");
+    const offset = (day - 4 + 7) % 7;
+    const thursday = new Date(today.getTime() - offset * 86400000);
+    const wednesday = new Date(thursday.getTime() + 6 * 86400000);
+    const weekStartStr = Utilities.formatDate(thursday, "Asia/Ho_Chi_Minh", "yyyy-MM-dd");
+    const weekEndStr = Utilities.formatDate(wednesday, "Asia/Ho_Chi_Minh", "yyyy-MM-dd");
+    const weekDisplayStr = Utilities.formatDate(thursday, "Asia/Ho_Chi_Minh", "dd/MM/yyyy") + " - " + Utilities.formatDate(wednesday, "Asia/Ho_Chi_Minh", "dd/MM/yyyy");
 
     // Gọi Firestore REST API để lấy toàn bộ records
     const url = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/(default)/documents/records?key=" + API_KEY;
@@ -88,8 +91,8 @@ function sendDaily7AMReport() {
       const type = f.type ? f.type.stringValue : "";
       const date = f.date ? f.date.stringValue : "";
 
-      // Chỉ lọc các báo cáo từ đầu tuần đến nay
-      if (date < weekStartStr) return;
+      // Chỉ lọc các báo cáo trong chu kỳ tuần (Thứ 5 -> Thứ 4)
+      if (date < weekStartStr || date > weekEndStr) return;
 
       if (type === "briefing") {
         briefingCount++;
@@ -141,10 +144,10 @@ function sendDaily7AMReport() {
       .slice(0, 10);
 
     // Tạo nội dung HTML Email
-    const htmlBody = buildHtmlEmail(todayStr, top2, top10, briefingCount, briefingAttendees);
+    const htmlBody = buildHtmlEmail(todayStr, weekDisplayStr, top2, top10, briefingCount, briefingAttendees);
 
     // Gửi email qua Gmail
-    GmailApp.sendEmail(ADMIN_GMAIL, "[Sun World Ba Na Hills] Báo cáo 7h Sáng: Top 2 & Top 10 Dịch vụ Khách hàng (" + todayStr + ")", "", {
+    GmailApp.sendEmail(ADMIN_GMAIL, "[Sun World Ba Na Hills] Báo cáo 7h Sáng: Top 2 & Top 10 Dịch vụ Khách hàng (Tuần " + weekDisplayStr + ")", "", {
       htmlBody: htmlBody,
       name: "Trainghienkhachhang.online"
     });
@@ -158,7 +161,7 @@ function sendDaily7AMReport() {
 /**
  * 3. Tạo mẫu HTML Email chuyên nghiệp chuẩn nhận diện Sun World
  */
-function buildHtmlEmail(todayStr, top2, top10, briefingCount, briefingAttendees) {
+function buildHtmlEmail(todayStr, weekDisplayStr, top2, top10, briefingCount, briefingAttendees) {
   let top2Html = "";
   if (top2.length === 0) {
     top2Html = "<p style='color:#64748b;font-style:italic;'>Chưa có dữ liệu đánh giá tuần này.</p>";
@@ -218,7 +221,7 @@ function buildHtmlEmail(todayStr, top2, top10, briefingCount, briefingAttendees)
         <h1 style="margin:0;font-size:22px;letter-spacing:-0.3px;">SUN WORLD BA NA HILLS</h1>
         <p style="margin:6px 0 0;font-size:14px;color:#fde68a;font-weight:600;">Trainghienkhachhang.online – Vận hành trò chơi</p>
         <div style="display:inline-block;margin-top:12px;background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold;">
-          📅 Báo cáo ngày: ${todayStr} (7:00 AM)
+          📅 Báo cáo ngày: ${todayStr} (7:00 AM) · Chu kỳ: ${weekDisplayStr}
         </div>
       </div>
 

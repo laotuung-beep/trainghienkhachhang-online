@@ -147,18 +147,27 @@ const vnDate = (s) => { const d = parse(s); return `${pad(d.getDate())}/${pad(d.
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Chu kỳ tuần vận hành: Bắt đầu từ Thứ 5 tuần này đến Thứ 4 tuần sau
+// Tuần 1 bắt đầu: 29/10/2026 – 04/11/2026
+const BASE_CYCLE_START = new Date(2026, 9, 29); // 29/10/2026 (Thứ 5)
+
 function weekStart(d) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const wd = (x.getDay() + 6) % 7;
-  return addDays(x, -wd);
+  // Thứ 5 (day=4) là mốc bắt đầu (offset=0), Thứ 4 (day=3) là ngày cuối cùng (offset=6)
+  const offset = (x.getDay() - 4 + 7) % 7;
+  return addDays(x, -offset);
+}
+
+function getCycleWeekNumber(d) {
+  const ws = weekStart(d);
+  const diffTime = ws.getTime() - BASE_CYCLE_START.getTime();
+  const diffWeeks = Math.round(diffTime / (7 * 86400000));
+  return diffWeeks >= 0 ? diffWeeks + 1 : diffWeeks;
 }
 
 function isoWeek(d) {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = t.getUTCDay() || 7;
-  t.setUTCDate(t.getUTCDate() + 4 - day);
-  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+  const cycleNum = getCycleWeekNumber(d);
+  return cycleNum > 0 ? `Tuần ${cycleNum}` : `T${cycleNum}`;
 }
 
 const urlCache = new WeakMap();

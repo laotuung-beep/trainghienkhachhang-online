@@ -1987,3 +1987,56 @@ body.role-staff .admin-only-feature {
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
   flex-shrink: 0;
 }
+
+/* ================= 19. EXPORT MODAL STYLES ================= */
+.export-type-btn {
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.export-type-btn:hover {
+  border-color: #0e4e46;
+  background: #f0fdf4;
+}
+
+.export-type-btn.active {
+  background: #0e4e46;
+  color: #ffffff;
+  border-color: #0e4e46;
+  box-shadow: 0 2px 6px rgba(14, 78, 70, 0.25);
+}
+
+.preset-chip {
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-chip:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.preset-chip.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.3);
+}

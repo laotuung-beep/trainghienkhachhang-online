@@ -1374,55 +1374,255 @@ const blobToDataURL = (b) =>
 const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 const toCsv = (rows) => "\uFEFF" + rows.map((l) => l.map(csvCell).join(",")).join("\r\n");
 
-$("#exportCsv").onclick = async () => {
-  const all = (await allRecords()).sort((a, b) => a.date.localeCompare(b.date));
-  const res = (r, id) => {
-    const v = r.result?.[id];
-    if (v === "pass") return "Đạt (5)";
-    if (v === "fail") return "Không đạt (1)";
-    if (v !== undefined && v !== null && v !== "") return `${v}/5 điểm`;
-    return "";
-  };
-  const cl = all.filter((r) => r.type === "checklist");
-  download(
-    `checklist_${fmt(new Date())}.csv`,
-    new Blob(
-      [
-        toCsv([
-          ["Ngày", "Tuần", "Khu vực", "Nhân sự được kiểm tra", "Người kiểm tra", ...Object.keys(ITEM_MAP).map(itemLabel), "Điểm %", "Số lỗi", "Ghi chú", "Số file"],
-          ...cl.map((r) => [
+// ---------- Luồng Xuất báo cáo Excel tùy biến (Bộ lọc Thời gian & Nội dung) ----------
+let currentExportType = "all"; // 'all' | 'checklist' | 'briefing'
+
+function setExportDatePreset(preset) {
+  const startEl = $("#exportStartDate");
+  const endEl = $("#exportEndDate");
+  if (!startEl || !endEl) return;
+
+  const now = new Date();
+  if (preset === "this-week") {
+    const mon = weekStart(now);
+    startEl.value = fmt(mon);
+    endEl.value = fmt(addDays(mon, 6));
+  } else if (preset === "last-week") {
+    const mon = addDays(weekStart(now), -7);
+    startEl.value = fmt(mon);
+    endEl.value = fmt(addDays(mon, 6));
+  } else if (preset === "this-month") {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    startEl.value = fmt(firstDay);
+    endEl.value = fmt(lastDay);
+  } else if (preset === "all") {
+    startEl.value = "";
+    endEl.value = "";
+  }
+}
+
+async function getExportFilteredRecords() {
+  const all = (await allRecords()).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
+  const type = currentExportType;
+  const area = $("#exportAreaSelect")?.value || "";
+  const from = $("#exportStartDate")?.value || "";
+  const to = $("#exportEndDate")?.value || "";
+
+  return all.filter((r) => {
+    if (type !== "all" && r.type !== type) return false;
+    if (area && r.area !== area) return false;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    return true;
+  });
+}
+
+async function updateExportPreviewCount() {
+  const countEl = $("#exportCountPreview");
+  if (!countEl) return;
+
+  countEl.innerHTML = `<span style="color:#64748b">⏳ Đang đếm số lượng...</span>`;
+  const list = await getExportFilteredRecords();
+
+  const clCount = list.filter((r) => r.type === "checklist").length;
+  const brCount = list.filter((r) => r.type === "briefing").length;
+
+  if (currentExportType === "checklist") {
+    if (!clCount) {
+      countEl.innerHTML = `<span style="color:#ef4444">⚠️ 0 bản ghi Checklist phù hợp bộ lọc</span>`;
+    } else {
+      countEl.innerHTML = `<span style="color:#10b981">✅ Tìm thấy <b>${clCount}</b> bản ghi Checklist</span>`;
+    }
+  } else if (currentExportType === "briefing") {
+    if (!brCount) {
+      countEl.innerHTML = `<span style="color:#ef4444">⚠️ 0 bản ghi Briefing phù hợp bộ lọc</span>`;
+    } else {
+      countEl.innerHTML = `<span style="color:#0284c7">🎓 Tìm thấy <b>${brCount}</b> buổi Briefing</span>`;
+    }
+  } else {
+    const total = clCount + brCount;
+    if (!total) {
+      countEl.innerHTML = `<span style="color:#ef4444">⚠️ 0 bản ghi phù hợp bộ lọc thời gian & khu vực</span>`;
+    } else {
+      countEl.innerHTML = `📑 <b style="color:#10b981">${clCount}</b> Checklist · <b style="color:#0284c7">${brCount}</b> Briefing (Tổng cộng: <b>${total}</b> bản ghi)`;
+    }
+  }
+}
+
+// Bấm nút Mở Modal Xuất Excel từ Menu
+$("#exportCsv")?.addEventListener("click", () => {
+  const modal = $("#exportModal");
+  if (!modal) return;
+
+  currentExportType = "all";
+  $$(".export-type-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.type === "all"));
+  $$(".preset-chip").forEach((chip) => chip.classList.toggle("active", chip.dataset.preset === "this-week"));
+
+  setExportDatePreset("this-week");
+  const areaSelect = $("#exportAreaSelect");
+  if (areaSelect) areaSelect.value = "";
+
+  modal.hidden = false;
+  updateExportPreviewCount();
+});
+
+$("#exportModalClose")?.addEventListener("click", () => {
+  $("#exportModal").hidden = true;
+});
+
+$("#btnExportCancel")?.addEventListener("click", () => {
+  $("#exportModal").hidden = true;
+});
+
+// Chuyển đổi Loại báo cáo cần xuất
+$$(".export-type-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".export-type-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentExportType = btn.dataset.type || "all";
+    updateExportPreviewCount();
+  });
+});
+
+// Chuyển đổi phím chọn nhanh thời gian
+$$(".preset-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    $$(".preset-chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    setExportDatePreset(chip.dataset.preset);
+    updateExportPreviewCount();
+  });
+});
+
+["#exportStartDate", "#exportEndDate", "#exportAreaSelect"].forEach((id) => {
+  $(id)?.addEventListener("change", () => {
+    if (id !== "#exportAreaSelect") {
+      $$(".preset-chip").forEach((c) => c.classList.remove("active"));
+    }
+    updateExportPreviewCount();
+  });
+});
+
+// Thực hiện xuất file Excel
+$("#btnDoExport")?.addEventListener("click", async () => {
+  const from = $("#exportStartDate")?.value || "";
+  const to = $("#exportEndDate")?.value || "";
+  const area = $("#exportAreaSelect")?.value || "";
+  const list = await getExportFilteredRecords();
+
+  if (!list.length) {
+    return toast("⚠️ Không có bản ghi nào phù hợp với bộ lọc đã chọn!");
+  }
+
+  const fromStr = from ? vnDate(from).replace(/\//g, "-") : "ToanBo";
+  const toStr = to ? vnDate(to).replace(/\//g, "-") : fmt(new Date()).replace(/\//g, "-");
+  const areaSuffix = area ? `_${area.replace(/[^a-zA-Z0-9]/g, "")}` : "";
+
+  let downloadedCount = 0;
+
+  // 1. Xuất Checklist
+  if (currentExportType === "checklist" || currentExportType === "all") {
+    const cl = list.filter((r) => r.type === "checklist");
+    if (cl.length) {
+      const resVal = (r, id) => {
+        const v = r.result?.[id];
+        if (v === "pass") return "Đạt (5/5)";
+        if (v === "fail") return "Không đạt (1/5)";
+        if (v !== undefined && v !== null && v !== "") {
+          const num = Number(v);
+          if (num === 5) return "5/5 (Xuất sắc)";
+          if (num === 4) return "4/5 (Tốt)";
+          if (num === 3) return "3/5 (Đạt)";
+          if (num === 2) return "2/5 (Yếu)";
+          if (num === 1) return "1/5 (Kém)";
+          return `${num}/5`;
+        }
+        return "Chưa chấm";
+      };
+
+      const rows = [
+        [
+          "STT",
+          "Ngày kiểm tra",
+          "Tuần (ISO)",
+          "Khu vực",
+          "Nhân sự được kiểm tra",
+          "Người kiểm tra",
+          ...CHECKLIST.map((c) => `${c.stt}. ${c.name}`),
+          "Kết quả",
+          "Điểm quy đổi (%)",
+          "Số tiêu chí lỗi",
+          "Ghi chú",
+          "Số minh chứng (ảnh/video)",
+          "Người ghi nhận (Tài khoản)"
+        ],
+        ...cl.map((r, idx) => {
+          const pass = r.fails && r.fails.length === 0;
+          return [
+            idx + 1,
             vnDate(r.date),
             isoWeek(parse(r.date)),
-            r.area,
-            r.employee,
-            r.checker,
-            ...Object.keys(ITEM_MAP).map((id) => res(r, id)),
-            r.score,
-            r.fails.length,
-            r.note,
-            r.media.length,
-          ]),
-        ]),
-      ],
-      { type: "text/csv;charset=utf-8" }
-    )
-  );
+            r.area || "",
+            r.employee || "",
+            r.checker || "",
+            ...CHECKLIST.map((c) => resVal(r, c.id)),
+            pass ? "ĐẠT" : "KHÔNG ĐẠT",
+            `${r.score || 0}%`,
+            r.fails ? r.fails.length : 0,
+            r.note || "",
+            r.media ? r.media.length : 0,
+            r.author ? `${r.author.name || ''} (${r.author.email || ''})` : ""
+          ];
+        })
+      ];
 
-  const br = all.filter((r) => r.type === "briefing");
-  download(
-    `briefing_${fmt(new Date())}.csv`,
-    new Blob(
-      [
-        toCsv([
-          ["Ngày", "Tuần", "Nhân sự chủ trì", "Nội dung", "Số NS tham gia", "Khu vực", "Ghi chú", "Số ảnh"],
-          ...br.map((r) => [vnDate(r.date), isoWeek(parse(r.date)), r.leader, r.content || DEFAULT_CONTENT, r.attendees, r.area, r.note, r.media.length]),
-        ]),
-      ],
-      { type: "text/csv;charset=utf-8" }
-    )
-  );
-  toast("Đã tải 2 file Excel thành công");
-};
+      const fileName = `Checklist_Tu_${fromStr}_Den_${toStr}${areaSuffix}.csv`;
+      download(fileName, new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" }));
+      downloadedCount++;
+    }
+  }
+
+  // 2. Xuất Briefing
+  if (currentExportType === "briefing" || currentExportType === "all") {
+    const br = list.filter((r) => r.type === "briefing");
+    if (br.length) {
+      const rows = [
+        [
+          "STT",
+          "Ngày đào tạo",
+          "Tuần (ISO)",
+          "Khu vực",
+          "Nhân sự chủ trì",
+          "Nội dung đào tạo đầu ca",
+          "Số NS tham gia",
+          "Ghi chú",
+          "Số minh chứng ảnh",
+          "Người ghi nhận (Tài khoản)"
+        ],
+        ...br.map((r, idx) => [
+          idx + 1,
+          vnDate(r.date),
+          isoWeek(parse(r.date)),
+          r.area || "",
+          r.leader || "",
+          r.content || DEFAULT_CONTENT,
+          r.attendees || 0,
+          r.note || "",
+          r.media ? r.media.length : 0,
+          r.author ? `${r.author.name || ''} (${r.author.email || ''})` : ""
+        ])
+      ];
+
+      const fileName = `Briefing_Tu_${fromStr}_Den_${toStr}${areaSuffix}.csv`;
+      download(fileName, new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" }));
+      downloadedCount++;
+    }
+  }
+
+  $("#exportModal").hidden = true;
+  toast(`✅ Đã xuất thành công ${downloadedCount} file Excel (CSV)!`);
+});
 
 $("#exportJson").onclick = async (e) => {
   e.target.disabled = true;

@@ -573,6 +573,82 @@
     </div>
   </div>
 
+  <!-- ================= EXPORT EXCEL FILTER MODAL ================= -->
+  <div class="modal" id="exportModal" hidden>
+    <div class="modal-box" style="max-width:440px;padding:0;overflow:hidden">
+      <div style="background:linear-gradient(135deg, #0e4e46, #1e3a5f);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">📊</span>
+          <h3 style="margin:0;font-size:16px;font-weight:800">Xuất báo cáo Excel (CSV)</h3>
+        </div>
+        <button class="modal-close" id="exportModalClose" style="position:static;color:#fff">✕</button>
+      </div>
+
+      <div style="padding:18px 20px;max-height:70vh;overflow-y:auto;background:#fff">
+        <!-- 1. Chọn nội dung cần xuất -->
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;font-weight:700;color:#1e293b;margin-bottom:8px">1. Chọn nội dung cần xuất:</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px" id="exportTypeSelector">
+            <button type="button" class="export-type-btn active" data-type="all">📑 Cả hai</button>
+            <button type="button" class="export-type-btn" data-type="checklist">✅ Checklist</button>
+            <button type="button" class="export-type-btn" data-type="briefing">🎓 Briefing</button>
+          </div>
+        </div>
+
+        <!-- 2. Chọn khu vực -->
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;font-weight:700;color:#1e293b;margin-bottom:6px">2. Lọc theo Khu vực:</label>
+          <select id="exportAreaSelect" class="f-select" style="width:100%;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:13px;background:#f8fafc">
+            <option value="">-- Tất cả khu vực --</option>
+            <option value="Máng trượt 1">Máng trượt 1</option>
+            <option value="Máng trượt 2">Máng trượt 2</option>
+            <option value="Máng trượt 3">Máng trượt 3</option>
+            <option value="FEC">FEC</option>
+          </select>
+        </div>
+
+        <!-- 3. Chọn khoảng thời gian -->
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;font-weight:700;color:#1e293b;margin-bottom:8px">3. Lọc theo Khoảng thời gian:</label>
+          
+          <!-- Phím chọn nhanh khoảng thời gian -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="exportTimePresets">
+            <button type="button" class="preset-chip active" data-preset="this-week">Tuần này</button>
+            <button type="button" class="preset-chip" data-preset="last-week">Tuần trước</button>
+            <button type="button" class="preset-chip" data-preset="this-month">Tháng này</button>
+            <button type="button" class="preset-chip" data-preset="all">Toàn bộ</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <span style="font-size:11px;color:#64748b;font-weight:600;display:block;margin-bottom:4px">Từ ngày:</span>
+              <input type="date" id="exportStartDate" class="f-input" style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px" />
+            </div>
+            <div>
+              <span style="font-size:11px;color:#64748b;font-weight:600;display:block;margin-bottom:4px">Đến ngày:</span>
+              <input type="date" id="exportEndDate" class="f-input" style="width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Thống kê xem trước số lượng -->
+        <div style="background:#f1f5f9;padding:12px 14px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:4px">
+          <div style="font-size:11px;color:#475569;font-weight:600;margin-bottom:4px">Số lượng bản ghi sẽ xuất:</div>
+          <div id="exportCountPreview" style="font-size:13px;font-weight:800;color:#0e4e46">
+            Đang tính toán...
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:14px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:10px">
+        <button type="button" class="btn-sub" id="btnExportCancel" style="flex:1;padding:12px;font-size:13px">Hủy</button>
+        <button type="button" class="btn-main" id="btnDoExport" style="flex:1.8;padding:12px;font-size:13px;background:linear-gradient(135deg, #0e4e46, #0284c7)">
+          📥 Tải file Excel
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= GOOGLE LOGIN OVERLAY ================= -->
   <div class="login-overlay" id="loginOverlay" hidden>
     <div class="login-card">

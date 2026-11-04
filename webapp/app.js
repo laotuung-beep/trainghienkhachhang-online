@@ -509,36 +509,12 @@ async function syncRecordToCloud(r) {
   if (!fbDb) return;
   try {
     const fbRec = { ...r };
-    if (fbStorage && Array.isArray(r.media) && r.media.length) {
-      fbRec.media = await Promise.all(
-        r.media.map(async (m, i) => {
-          if (m.url) return { name: m.name, type: m.type, url: m.url };
-          if (m.blob instanceof Blob) {
-            try {
-              const path = `ete_media/${r.id}_${i}_${m.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-              const ref = fbStorage.ref(path);
-              // Đặt timeout 10s cho upload ảnh để không bị treo khi mạng yếu
-              const uploadPromise = ref.put(m.blob);
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Upload timeout")), 10000)
-              );
-              await Promise.race([uploadPromise, timeoutPromise]);
-              const url = await ref.getDownloadURL();
-              return { name: m.name, type: m.type, url };
-            } catch (err) {
-              console.warn("Storage upload err (saving without cloud url):", err);
-              return { name: m.name, type: m.type, url: "" };
-            }
-          }
-          return { name: m.name, type: m.type, url: "" };
-        })
-      );
-    } else {
-      fbRec.media = (r.media || []).map((m) => ({ name: m.name, type: m.type, url: m.url || "" }));
-    }
+    // Tạm thời không lưu hình ảnh lên Cloud theo yêu cầu:
+    fbRec.media = [];
+    delete fbRec.blob;
 
     await fbDb.collection("records").doc(r.id).set(fbRec);
-    console.log("Record synced to Cloud successfully:", r.id);
+    console.log("Record synced to Cloud successfully with real-time:", r.id, r.time || r.realTime);
   } catch (err) {
     console.warn("Firebase putRecord failed:", err);
     if (err.code === "permission-denied") {
@@ -998,16 +974,21 @@ $("#checklistForm").addEventListener("submit", async (e) => {
   }
   const missing = Object.keys(ITEM_MAP).filter((id) => !clResult[id]);
   if (missing.length) return toast(`Còn ${missing.length} tiêu chí chưa chọn kết quả`);
-  if (!clUp.files.length) return toast("Vui lòng chụp ảnh hoặc tải video minh chứng");
 
+  // Tạm thời không bắt buộc và không lưu hình ảnh theo yêu cầu
   const fails = Object.keys(clResult).filter((id) => Number(clResult[id]) <= 2 || clResult[id] === "fail");
   const score = calcScore(clResult) ?? 100;
   const area = f.area.value.trim();
   const date = f.date.value;
   const note = f.note.value.trim();
-  const mediaCount = clUp.files.length;
   const authorName = currentUser?.displayName || "Nhân sự Vận hành";
   const authorEmail = currentUser?.email || "";
+
+  // Ghi nhận thời gian thực tế chính xác đến từng giây khi bấm lưu
+  const now = new Date();
+  const realTime = now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const realDateTime = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${realTime}`;
+  const timestamp = now.getTime();
 
   let totalPoints = 0;
   Object.values(clResult).forEach((v) => {
@@ -1037,9 +1018,9 @@ $("#checklistForm").addEventListener("submit", async (e) => {
         <span class="confirm-label">Loại báo cáo:</span>
         <span class="confirm-val highlight">📋 Checklist Đánh giá Dịch vụ</span>
       </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Ngày kiểm tra:</span>
-        <span class="confirm-val">${esc(date)}</span>
+      <div class="confirm-row" style="background:#f0fdf4;padding:6px 10px;border-radius:8px">
+        <span class="confirm-label" style="color:#166534">Thời gian lưu thực tế:</span>
+        <span class="confirm-val" style="color:#15803d;font-weight:800;font-size:13.5px">⏱️ ${realTime} (${vnDate(date)})</span>
       </div>
       <div class="confirm-row">
         <span class="confirm-label">Khu vực:</span>
@@ -1060,8 +1041,8 @@ $("#checklistForm").addEventListener("submit", async (e) => {
         </span>
       </div>
       <div class="confirm-row">
-        <span class="confirm-label">Minh chứng (ảnh/video):</span>
-        <span class="confirm-val">${mediaCount} tệp đính kèm</span>
+        <span class="confirm-label">Hình ảnh đính kèm:</span>
+        <span class="confirm-val" style="color:#64748b;font-style:italic">Tạm thời bỏ qua (Không lưu ảnh)</span>
       </div>
       ${note ? `
       <div class="confirm-row">
@@ -1089,7 +1070,11 @@ $("#checklistForm").addEventListener("submit", async (e) => {
       await putRecord({
         id: uid(),
         type: "checklist",
-        createdAt: Date.now(),
+        createdAt: timestamp,
+        timestamp: timestamp,
+        time: realTime,
+        realTime: realTime,
+        savedAt: realDateTime,
         date: date,
         area: area,
         checker,
@@ -1098,7 +1083,7 @@ $("#checklistForm").addEventListener("submit", async (e) => {
         fails,
         score,
         note: note,
-        media: clUp.files.slice(),
+        media: [], // Tạm thời không lưu hình ảnh
         author: {
           name: authorName,
           email: authorEmail,
@@ -1108,7 +1093,7 @@ $("#checklistForm").addEventListener("submit", async (e) => {
 
       if (f.checker.value === "__other__") addCustomStaff(checker);
       if (f.employee.value === "__other__") addCustomStaff(employee);
-      toast("✅ Đã lưu kết quả kiểm tra thành công!");
+      toast(`✅ Đã lưu kết quả kiểm tra lúc ${realTime}!`);
       f.reset();
       refreshLists();
       switchTab("dashboard");
@@ -1265,11 +1250,11 @@ async function renderHistory() {
       <div class="h-record-card" data-id="${r.id}">
         <div class="h-thumb-box" style="${thumb}">
           <span class="h-badge ${r.type}">${r.type === "briefing" ? "BRIEFING" : "CHECKLIST"}</span>
-          <span class="h-media-count">📷 ${r.media.length - vids}${vids ? ` · 🎬 ${vids}` : ""}</span>
+          <span class="h-media-count">${r.time ? `⏱️ ${r.time}` : `📷 ${r.media ? r.media.length : 0}`}</span>
         </div>
         <div class="h-details">
           <div class="h-title">${title}</div>
-          <div class="h-meta">${vnDate(r.date)} · ${esc(r.area)}</div>
+          <div class="h-meta">${vnDate(r.date)}${r.time ? ` · ⏱️ ${r.time}` : ''} · ${esc(r.area)}</div>
           <div class="h-sub">${sub}</div>
         </div>
       </div>`;
@@ -1340,7 +1325,7 @@ function openDetail(r) {
       </div>
       <div class="modal-kv">
         <div>Nhân sự</div><div><b>${esc(r.employee)}</b></div>
-        <div>Ngày</div><div>${vnDate(r.date)}</div>
+        <div>Thời gian lưu</div><div><b>⏱️ ${r.time || r.realTime || vnDate(r.date)} (${vnDate(r.date)})</b></div>
         <div>Khu vực</div><div>${esc(r.area)}</div>
         <div>Người kiểm tra</div><div><b>${esc(r.checker)}</b></div>
         <div>Kết quả</div><div><span class="score-badge ${scoreClass(r.score)}">${r.fails.length === 0 ? "✅ ĐẠT" : "❌ KHÔNG ĐẠT"}</span> (${r.score}% · ${r.fails.length} lỗi)</div>
@@ -1566,6 +1551,7 @@ $("#btnDoExport")?.addEventListener("click", async () => {
         [
           "STT",
           "Ngày kiểm tra",
+          "Thời gian lưu (Giờ:Phút:Giây)",
           "Tuần (ISO)",
           "Khu vực",
           "Nhân sự được kiểm tra",
@@ -1575,7 +1561,6 @@ $("#btnDoExport")?.addEventListener("click", async () => {
           "Điểm quy đổi (%)",
           "Số tiêu chí lỗi",
           "Ghi chú",
-          "Số minh chứng (ảnh/video)",
           "Người ghi nhận (Tài khoản)"
         ],
         ...cl.map((r, idx) => {
@@ -1583,6 +1568,7 @@ $("#btnDoExport")?.addEventListener("click", async () => {
           return [
             idx + 1,
             vnDate(r.date),
+            r.time || r.realTime || "",
             isoWeek(parse(r.date)),
             r.area || "",
             r.employee || "",
@@ -1592,7 +1578,6 @@ $("#btnDoExport")?.addEventListener("click", async () => {
             `${r.score || 0}%`,
             r.fails ? r.fails.length : 0,
             r.note || "",
-            r.media ? r.media.length : 0,
             r.author ? `${r.author.name || ''} (${r.author.email || ''})` : ""
           ];
         })

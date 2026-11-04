@@ -1107,7 +1107,11 @@ $("#checklistForm").addEventListener("submit", async (e) => {
 // Gợi ý tên đã nhập
 async function refreshLists() {
   const all = await allRecords();
-  const fill = (sel, vals) => ($(sel).innerHTML = [...new Set(vals.filter(Boolean))].sort().map((n) => `<option value="${esc(n)}">`).join(""));
+  const fill = (sel, vals) => {
+    const el = $(sel);
+    if (!el) return;
+    el.innerHTML = [...new Set(vals.filter(Boolean))].sort().map((n) => `<option value="${esc(n)}">`).join("");
+  };
   fill("#leaderList", all.filter((r) => r.type === "briefing").map((r) => r.leader));
 }
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Trainghienkhachhang.online – Sun World Ba Na Hills</title>
-  <link rel="stylesheet" href="styles.css?v=2.3" />
+  <link rel="stylesheet" href="styles.css?v=2.4" />
 </head>
 <body>
   <div class="app-container">
@@ -57,93 +57,7 @@
             <p class="card-caption">Xếp theo tổng số lỗi vi phạm trong tuần</p>
             <div id="topStaff"></div>
           </div>
-
-          <!-- 3. Báo cáo Briefing -->
-          <div class="mobile-card" id="sec-briefing-summary">
-            <div class="sec-title">
-              <span class="sec-icon">🎓</span>
-              <h3>3. BÁO CÁO BRIEFING TRONG TUẦN</h3>
-            </div>
-            <p class="card-caption">Số buổi và số nhân sự tham gia theo từng người chủ trì</p>
-            <div id="briefingWeek" class="table-responsive"></div>
-          </div>
         </div>
-      </section>
-
-      <!-- ================= BRIEFING TAB ================= -->
-      <section id="tab-briefing" class="tab-pane">
-        <form id="briefingForm" class="mobile-card form-card">
-          <div class="sec-title">
-            <span class="sec-icon">🎓</span>
-            <h3>1. ĐÀO TẠO & BRIEFING ĐẦU CA</h3>
-          </div>
-          <p class="card-caption">Báo cáo tình hình briefing nâng cao trải nghiệm đầu ca</p>
-
-          <!-- Khu vực selection pills (like weather buttons in screenshot) -->
-          <div class="field-block">
-            <label class="field-label">Khu vực briefing:</label>
-            <div class="pill-grid area-pills" data-target="#briefingArea">
-              <button type="button" class="pill-opt" data-val="Máng trượt 1">🎢 Máng trượt 1</button>
-              <button type="button" class="pill-opt" data-val="Máng trượt 2">🎢 Máng trượt 2</button>
-              <button type="button" class="pill-opt" data-val="Máng trượt 3">🎢 Máng trượt 3</button>
-              <button type="button" class="pill-opt" data-val="FEC">🎮 FEC</button>
-            </div>
-            <select name="area" id="briefingArea" class="area-select hidden-select" required>
-              <option value="" disabled selected>-- Chọn khu vực --</option>
-              <option>Máng trượt 1</option>
-              <option>Máng trượt 2</option>
-              <option>Máng trượt 3</option>
-              <option>FEC</option>
-            </select>
-          </div>
-
-          <!-- Details Grid -->
-          <div class="field-grid-2">
-            <div class="field-block">
-              <label class="field-label">Nhân sự chủ trì:</label>
-              <input name="leader" list="leaderList" class="form-input" placeholder="Họ tên người chủ trì" required />
-              <datalist id="leaderList"></datalist>
-            </div>
-            <div class="field-block">
-              <label class="field-label">Số NS tham gia:</label>
-              <input type="number" name="attendees" min="1" class="form-input" placeholder="VD: 12" required />
-            </div>
-          </div>
-
-          <div class="field-grid-2">
-            <div class="field-block">
-              <label class="field-label">Ngày:</label>
-              <input type="date" name="date" class="form-input" required />
-            </div>
-            <div class="field-block">
-              <label class="field-label">Nội dung:</label>
-              <input name="content" class="form-input" value="Nâng cao trải nghiệm khách hàng" required />
-            </div>
-          </div>
-
-          <div class="field-block">
-            <label class="field-label">Ghi chú / Nhắc nhở trong ca:</label>
-            <textarea name="note" rows="2" class="form-input" placeholder="Tình hình vận hành, điểm cần lưu ý..."></textarea>
-          </div>
-
-          <!-- Photo upload block -->
-          <div class="field-block">
-            <label class="field-label">Hình ảnh báo cáo (bắt buộc):</label>
-            <div class="mobile-upload-box">
-              <label class="upload-trigger-btn">
-                <span class="upload-icon">📷</span>
-                <span>Chụp / Tải ảnh lên</span>
-                <input type="file" id="briefingFiles" accept="image/*" multiple hidden />
-              </label>
-              <div class="previews-grid" id="briefingPreviews"></div>
-            </div>
-          </div>
-
-          <div class="form-actions-bottom">
-            <button type="reset" class="btn-sub">Làm mới</button>
-            <button type="submit" class="btn-main">Lưu báo cáo Briefing</button>
-          </div>
-        </form>
       </section>
 
       <!-- ================= CHECKLIST TAB ================= -->
@@ -453,13 +367,6 @@
         <span class="b-label">Tổng quan</span>
       </button>
 
-      <button class="b-tab" data-tab="briefing">
-        <span class="b-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
-        </span>
-        <span class="b-label">Briefing</span>
-      </button>
-
       <button class="b-tab" data-tab="checklist">
         <span class="b-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -693,7 +600,7 @@
   <script src="firebase-storage.js"></script>
   <script src="firebase-config.js"></script>
 
-  <script src="app.js?v=2.3"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>
 

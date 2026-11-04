@@ -296,7 +296,7 @@ function updateAuthUI() {
   updateAdminGmailUI();
 
   const activeTab = document.querySelector(".b-tab.active")?.dataset?.tab;
-  if (!isUserAdmin && (activeTab === "history" || activeTab === "settings")) {
+  if (!isUserAdmin && activeTab !== "dashboard" && activeTab !== "checklist") {
     switchTab("dashboard");
   }
 }
@@ -611,8 +611,8 @@ function setupUploader(inputSel, previewSel, allowVideo) {
 
 // ---------- Tab switching (Bottom bar only) ----------
 function switchTab(tabId) {
-  if (!isUserAdmin && (tabId === "history" || tabId === "settings")) {
-    toast("⚠️ Mục này chỉ dành cho Quản trị viên (Admin). Bạn có quyền trên: Tổng quan, Briefing và Checklist.");
+  if (!isUserAdmin && tabId !== "dashboard" && tabId !== "checklist") {
+    toast("⚠️ Bạn có quyền thao tác trên: Tổng quan và Checklist.");
     tabId = "dashboard";
   }
 
@@ -690,100 +690,103 @@ function showConfirmDialog({ icon, title, contentHtml, onConfirm }) {
   modal.hidden = false;
 }
 
-// ---------- Briefing ----------
-const briefUp = setupUploader("#briefingFiles", "#briefingPreviews", false);
+// ---------- Briefing (Tạm ẩn theo yêu cầu) ----------
+const briefingFormEl = $("#briefingForm");
+if (briefingFormEl) {
+  const briefUp = setupUploader("#briefingFiles", "#briefingPreviews", false);
 
-$("#briefingForm").addEventListener("reset", (e) => {
-  setTimeout(() => {
-    e.target.date.value = fmt(new Date());
-    syncAreaPills(e.target, "");
-    briefUp.reset();
+  briefingFormEl.addEventListener("reset", (e) => {
+    setTimeout(() => {
+      e.target.date.value = fmt(new Date());
+      syncAreaPills(e.target, "");
+      briefUp.reset();
+    });
   });
-});
 
-$("#briefingForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  if (!f.area.value) return toast("Vui lòng chọn khu vực briefing");
-  if (!briefUp.files.length) return toast("Vui lòng chụp hoặc thêm hình ảnh báo cáo");
+  briefingFormEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (!f.area.value) return toast("Vui lòng chọn khu vực briefing");
+    if (!briefUp.files.length) return toast("Vui lòng chụp hoặc thêm hình ảnh báo cáo");
 
-  const area = f.area.value.trim();
-  const leader = f.leader.value.trim();
-  const attendees = +f.attendees.value || 0;
-  const date = f.date.value;
-  const note = f.note.value.trim();
-  const mediaCount = briefUp.files.length;
-  const authorName = currentUser?.displayName || "Nhân sự Vận hành";
-  const authorEmail = currentUser?.email || "";
+    const area = f.area.value.trim();
+    const leader = f.leader.value.trim();
+    const attendees = +f.attendees.value || 0;
+    const date = f.date.value;
+    const note = f.note.value.trim();
+    const mediaCount = briefUp.files.length;
+    const authorName = currentUser?.displayName || "Nhân sự Vận hành";
+    const authorEmail = currentUser?.email || "";
 
-  const contentHtml = `
-    <div class="confirm-table">
-      <div class="confirm-row">
-        <span class="confirm-label">Loại báo cáo:</span>
-        <span class="confirm-val highlight">🎓 Đào tạo & Briefing đầu ca</span>
+    const contentHtml = `
+      <div class="confirm-table">
+        <div class="confirm-row">
+          <span class="confirm-label">Loại báo cáo:</span>
+          <span class="confirm-val highlight">🎓 Đào tạo & Briefing đầu ca</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Ngày thực hiện:</span>
+          <span class="confirm-val">${esc(date)}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Khu vực:</span>
+          <span class="confirm-val">${esc(area)}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Người chủ trì:</span>
+          <span class="confirm-val">${esc(leader || "(Chưa nhập)")}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Số người tham gia:</span>
+          <span class="confirm-val">${attendees} nhân sự</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Hình ảnh đính kèm:</span>
+          <span class="confirm-val">${mediaCount} ảnh đã chụp</span>
+        </div>
+        ${note ? `
+        <div class="confirm-row">
+          <span class="confirm-label">Ghi chú:</span>
+          <span class="confirm-val">${esc(note)}</span>
+        </div>` : ""}
+        <div class="confirm-row" style="border-bottom:none;margin-top:8px;background:#f8fafc;padding:6px 10px;border-radius:10px">
+          <span class="confirm-label">Người gửi:</span>
+          <span class="confirm-val" style="color:#0284c7">${esc(authorName)} ${authorEmail ? `(${esc(authorEmail)})` : ""}</span>
+        </div>
       </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Ngày thực hiện:</span>
-        <span class="confirm-val">${esc(date)}</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Khu vực:</span>
-        <span class="confirm-val">${esc(area)}</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Người chủ trì:</span>
-        <span class="confirm-val">${esc(leader || "(Chưa nhập)")}</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Số người tham gia:</span>
-        <span class="confirm-val">${attendees} nhân sự</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Hình ảnh đính kèm:</span>
-        <span class="confirm-val">${mediaCount} ảnh đã chụp</span>
-      </div>
-      ${note ? `
-      <div class="confirm-row">
-        <span class="confirm-label">Ghi chú:</span>
-        <span class="confirm-val">${esc(note)}</span>
-      </div>` : ""}
-      <div class="confirm-row" style="border-bottom:none;margin-top:8px;background:#f8fafc;padding:6px 10px;border-radius:10px">
-        <span class="confirm-label">Người gửi:</span>
-        <span class="confirm-val" style="color:#0284c7">${esc(authorName)} ${authorEmail ? `(${esc(authorEmail)})` : ""}</span>
-      </div>
-    </div>
-  `;
+    `;
 
-  showConfirmDialog({
-    icon: "🎓",
-    title: "Xác nhận gửi Báo cáo Briefing",
-    contentHtml,
-    onConfirm: async () => {
-      await putRecord({
-        id: uid(),
-        type: "briefing",
-        createdAt: Date.now(),
-        leader: leader,
-        content: f.content.value.trim() || DEFAULT_CONTENT,
-        attendees: attendees,
-        date: date,
-        area: area,
-        note: note,
-        media: briefUp.files.slice(),
-        author: {
-          name: authorName,
-          email: authorEmail,
-          uid: currentUser?.uid || ""
-        }
-      });
+    showConfirmDialog({
+      icon: "🎓",
+      title: "Xác nhận gửi Báo cáo Briefing",
+      contentHtml,
+      onConfirm: async () => {
+        await putRecord({
+          id: uid(),
+          type: "briefing",
+          createdAt: Date.now(),
+          leader: leader,
+          content: f.content.value.trim() || DEFAULT_CONTENT,
+          attendees: attendees,
+          date: date,
+          area: area,
+          note: note,
+          media: briefUp.files.slice(),
+          author: {
+            name: authorName,
+            email: authorEmail,
+            uid: currentUser?.uid || ""
+          }
+        });
 
-      toast("✅ Đã gửi và lưu báo cáo Briefing thành công!");
-      f.reset();
-      refreshLists();
-      switchTab("dashboard");
-    }
+        toast("✅ Đã gửi và lưu báo cáo Briefing thành công!");
+        f.reset();
+        refreshLists();
+        switchTab("dashboard");
+      }
+    });
   });
-});
+}
 
 // ---------- Checklist (Thang điểm 1 - 5) ----------
 const clUp = setupUploader("#checklistFiles", "#checklistPreviews", true);
@@ -1162,22 +1165,25 @@ async function renderDashboard() {
   // Update Alert Badge in Header
   $("#headerAlertCount").textContent = sumFails(cl);
 
-  // (a) Briefing summary table
-  const byLeader = {};
-  br.forEach((r) => {
-    const x = (byLeader[r.leader] ||= { n: 0, att: 0 });
-    x.n++;
-    x.att += r.attendees || 0;
-  });
-  const leaders = Object.entries(byLeader).sort((a, b) => b[1].n - a[1].n || b[1].att - a[1].att);
-  $("#briefingWeek").innerHTML = leaders.length
-    ? `
-    <table class="lead-table">
-      <thead><tr><th>Nhân sự chủ trì</th><th>Số buổi</th><th>Tổng NS</th></tr></thead>
-      <tbody>${leaders.map(([n, x]) => `<tr><td><b>${esc(n)}</b></td><td>${x.n}</td><td>${x.att}</td></tr>`).join("")}</tbody>
-      <tfoot><tr><td>Tổng cộng</td><td>${br.length}</td><td>${sumAtt(br)}</td></tr></tfoot>
-    </table>`
-    : `<div class="empty-state">Chưa có buổi Briefing nào trong tuần này</div>`;
+  // (a) Briefing summary table (nếu có phần tử trong giao diện)
+  const briefingWeekEl = $("#briefingWeek");
+  if (briefingWeekEl) {
+    const byLeader = {};
+    br.forEach((r) => {
+      const x = (byLeader[r.leader] ||= { n: 0, att: 0 });
+      x.n++;
+      x.att += r.attendees || 0;
+    });
+    const leaders = Object.entries(byLeader).sort((a, b) => b[1].n - a[1].n || b[1].att - a[1].att);
+    briefingWeekEl.innerHTML = leaders.length
+      ? `
+      <table class="lead-table">
+        <thead><tr><th>Nhân sự chủ trì</th><th>Số buổi</th><th>Tổng NS</th></tr></thead>
+        <tbody>${leaders.map(([n, x]) => `<tr><td><b>${esc(n)}</b></td><td>${x.n}</td><td>${x.att}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Tổng cộng</td><td>${br.length}</td><td>${sumAtt(br)}</td></tr></tfoot>
+      </table>`
+      : `<div class="empty-state">Chưa có buổi Briefing nào trong tuần này</div>`;
+  }
 
   // (b) Top 2 xuất sắc nhất
   const bests = Object.values(st).sort((a, b) => b.avg - a.avg || a.fails - b.fails || b.n - a.n).slice(0, 2);
@@ -2026,12 +2032,12 @@ $("#headerUserAvatar")?.addEventListener("click", () => {
   if (isUserAdmin) {
     roleBadge.className = "role-pill admin";
     roleBadge.innerHTML = "👑 Quản trị viên (Admin)";
-    scopeText.innerHTML = "<b>Phạm vi thao tác:</b><br />• 🌟 Toàn quyền quản trị hệ thống<br />• 📊 <b>Tổng quan:</b> Xem bảng xếp hạng tuần<br />• 🎓 <b>Briefing:</b> Báo cáo đào tạo đầu ca<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br />• 📜 <b>Lịch sử:</b> Xem tất cả & Xóa báo cáo<br />• ⚙️ <b>Menu:</b> Cài đặt Cloud & Quản trị";
+    scopeText.innerHTML = "<b>Phạm vi thao tác:</b><br />• 🌟 Toàn quyền quản trị hệ thống<br />• 📊 <b>Tổng quan:</b> Bảng xếp hạng tuần<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br />• 📜 <b>Lịch sử:</b> Xem tất cả & Xóa báo cáo<br />• ⚙️ <b>Menu:</b> Cài đặt Cloud & Quản trị";
     btnToggleAdmin.textContent = "🔒 Khóa về quyền Nhân viên";
   } else {
     roleBadge.className = "role-pill staff";
     roleBadge.innerHTML = "👤 Nhân sự (Staff)";
-    scopeText.innerHTML = "<b>Phạm vi được phép thao tác:</b><br />• 📊 <b>Tổng quan:</b> Xem bảng xếp hạng tuần<br />• 🎓 <b>Briefing:</b> Báo cáo đào tạo đầu ca<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br /><i>(Mục Lịch sử và Menu chỉ dành cho Quản trị viên)</i>";
+    scopeText.innerHTML = "<b>Phạm vi được phép thao tác:</b><br />• 📊 <b>Tổng quan:</b> Bảng xếp hạng tuần<br />• ✅ <b>Checklist:</b> Kiểm tra nhân sự<br /><i>(Mục Lịch sử và Menu chỉ dành cho Quản trị viên)</i>";
     btnToggleAdmin.textContent = "🔑 Nhập mã Admin";
   }
 
@@ -2080,7 +2086,7 @@ $("#btnLogout")?.addEventListener("click", async () => {
 });
 
 // ---------- Khởi tạo ----------
-$("#briefingForm").date.value = fmt(new Date());
+if ($("#briefingForm")?.date) $("#briefingForm").date.value = fmt(new Date());
 $("#checklistForm").date.value = fmt(new Date());
 setupAreaPills();
 fillEmployeeSelect();

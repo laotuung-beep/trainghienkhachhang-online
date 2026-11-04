@@ -462,20 +462,36 @@ function initFirebase() {
     fbDb.collection("records").onSnapshot(
       async (snapshot) => {
         try {
-          if (!snapshot.empty) {
-            const list = snapshot.docs.map((d) => d.data());
-            // Lưu hàng loạt vào IndexedDB trong 1 transaction duy nhất (cực nhanh, không lag)
+          if (snapshot.empty) {
+            // Cloud trống (dữ liệu đã bị xóa toàn bộ trên Cloud) -> dọn sạch IndexedDB cục bộ của máy
+            await tx("readwrite", (s) => s.clear());
+          } else {
+            const cloudDocs = snapshot.docs.map((d) => d.data());
+            const cloudIdSet = new Set(snapshot.docs.map((d) => d.id));
+
+            // 1. Cập nhật hoặc lưu các bản ghi từ Cloud vào IndexedDB
             await tx("readwrite", (s) => {
-              for (const item of list) s.put(item);
+              for (const item of cloudDocs) s.put(item);
             });
+
+            // 2. Tự động xóa khỏi IndexedDB các bản ghi mà Cloud đã bị xóa (do máy khác xóa)
+            const localList = await tx("readonly", (s) => s.getAll());
+            const orphanedIds = localList.filter((r) => r.id && !cloudIdSet.has(r.id)).map((r) => r.id);
+            if (orphanedIds.length > 0) {
+              await tx("readwrite", (s) => {
+                for (const id of orphanedIds) s.delete(id);
+              });
+            }
           }
           if (statusEl) statusEl.innerHTML = `Trạng thái: 🟢 Đã kết nối Cloud (<b style="color:#0284c7">${esc(cfg.projectId || "Firebase")}</b>)`;
         } catch (e) {
-          console.warn("Error saving snapshot to local DB:", e);
+          console.warn("Error synchronizing snapshot to local DB:", e);
         }
         clearTimeout(renderDebounceTimer);
         renderDebounceTimer = setTimeout(() => {
           renderDashboard();
+          renderHistory();
+          renderStorage();
           refreshLists();
         }, 120);
       },
@@ -540,7 +556,22 @@ async function deleteRecord(id) {
   }
 }
 
-const clearRecords = () => tx("readwrite", (s) => s.clear());
+async function clearRecords() {
+  await tx("readwrite", (s) => s.clear());
+  if (fbDb) {
+    try {
+      const snap = await fbDb.collection("records").get();
+      if (!snap.empty) {
+        const deletePromises = snap.docs.map((d) => d.ref.delete());
+        await Promise.all(deletePromises);
+        console.log(`Đã xóa ${deletePromises.length} bản ghi trên Cloud Firestore`);
+      }
+    } catch (err) {
+      console.warn("Firebase clearRecords failed:", err);
+      toast("⚠️ Lỗi khi xóa trên Cloud: " + (err.message || err));
+    }
+  }
+}
 
 // ---------- Xử lý nén ảnh & upload ----------
 async function compressImage(file, max = 1200, q = 0.75) {
@@ -1677,9 +1708,12 @@ $("#importJson").onchange = async (e) => {
 };
 
 $("#clearAll").onclick = async () => {
-  if (!confirm("Xác nhận xóa TOÀN BỘ dữ liệu? Hành động không thể hoàn tác.")) return;
+  if (!confirm("Xác nhận xóa TOÀN BỘ dữ liệu (trên máy và trên Cloud cho tất cả mọi người)? Hành động không thể hoàn tác.")) return;
+  toast("Đang xóa toàn bộ dữ liệu...");
   await clearRecords();
-  toast("Đã xóa toàn bộ dữ liệu");
+  toast("✅ Đã xóa toàn bộ dữ liệu thành công!");
+  renderDashboard();
+  renderHistory();
   renderStorage();
   refreshLists();
 };

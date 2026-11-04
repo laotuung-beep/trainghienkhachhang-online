@@ -469,6 +469,7 @@ function initFirebase() {
               for (const item of list) s.put(item);
             });
           }
+          if (statusEl) statusEl.innerHTML = `Trạng thái: 🟢 Đã kết nối Cloud (<b style="color:#0284c7">${esc(cfg.projectId || "Firebase")}</b>)`;
         } catch (e) {
           console.warn("Error saving snapshot to local DB:", e);
         }
@@ -478,7 +479,14 @@ function initFirebase() {
           refreshLists();
         }, 120);
       },
-      (err) => console.warn("Firestore snapshot:", err)
+      (err) => {
+        console.warn("Firestore snapshot error:", err);
+        if (err.code === "permission-denied") {
+          if (statusEl) {
+            statusEl.innerHTML = `Trạng thái: 🔴 <b style="color:#dc2626">Bị chặn bởi Firestore Rules</b> (Chưa cấp quyền)`;
+          }
+        }
+      }
     );
   } catch (e) {
     console.error("Firebase init error:", e);
@@ -494,7 +502,7 @@ async function putRecord(r) {
   renderDashboard();
   refreshLists();
   // Chạy đồng bộ Cloud bất đồng bộ phía sau
-  syncRecordToCloud(r);
+  return syncRecordToCloud(r);
 }
 
 async function syncRecordToCloud(r) {
@@ -533,6 +541,10 @@ async function syncRecordToCloud(r) {
     console.log("Record synced to Cloud successfully:", r.id);
   } catch (err) {
     console.warn("Firebase putRecord failed:", err);
+    if (err.code === "permission-denied") {
+      toast("⚠️ Chưa lưu được lên Cloud do Firestore Rules đang khóa. Vui lòng mở Rules trong Firebase Console!");
+    }
+    throw err;
   }
 }
 
@@ -2128,16 +2140,21 @@ $("#btnSyncLocalToFirebase")?.addEventListener("click", async () => {
   toast("Đang tải dữ liệu lên Cloud...");
   try {
     const local = await tx("readonly", (s) => s.getAll());
+    if (!local.length) return toast("Bộ nhớ máy chưa có báo cáo nào để tải lên");
     let count = 0;
     for (const r of local) {
-      await putRecord(r);
+      await syncRecordToCloud(r);
       count++;
     }
-    toast(`✅ Đã đồng bộ ${count} báo cáo lên Firebase Cloud!`);
+    toast(`✅ Đã đồng bộ thành công ${count} báo cáo lên Firebase Cloud!`);
     renderDashboard();
     renderStorage();
   } catch (err) {
-    alert("Lỗi đồng bộ: " + err.message);
+    if (err.code === "permission-denied") {
+      alert("⚠️ Firebase từ chối phân quyền (PERMISSION_DENIED):\n\nHiện tại Firebase Cloud Firestore đang khóa quyền ghi. Vui lòng vào Firebase Console -> Firestore Database -> Rules -> Đổi 'allow read, write: if true;' và bấm Publish.");
+    } else {
+      alert("Lỗi đồng bộ: " + err.message);
+    }
   }
 });
 
